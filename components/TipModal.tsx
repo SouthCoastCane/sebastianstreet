@@ -11,7 +11,7 @@ const appearance = {
     colorPrimary: "#F5A524",
     colorBackground: "#141110",
     colorText: "#F3EFE7",
-    colorTextSecondary: "#9A9287",
+    colorTextSecondary: "#BFC4C0",
     colorDanger: "#E8402A",
     fontFamily: "Inter, system-ui, sans-serif",
     borderRadius: "10px",
@@ -22,7 +22,7 @@ const appearance = {
     ".Input:focus": { border: "1px solid #F5A524", boxShadow: "none" },
     ".Tab": { border: "1px solid rgba(243,239,231,.14)", backgroundColor: "#0A0908" },
     ".Tab--selected": { border: "1px solid #F5A524" },
-    ".Label": { color: "#9A9287" },
+    ".Label": { color: "#BFC4C0" },
   },
 };
 
