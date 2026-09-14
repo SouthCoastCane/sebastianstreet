@@ -96,10 +96,31 @@ export default function SimulcastManager() {
     return { text: "ready", cls: "" };
   }
 
+  // Platform-specific reminder for the "chat in" side (set in Settings).
+  function chatNote() {
+    if (platform === "YouTube")
+      return <>To also merge <strong>YouTube chat</strong> into your show, add your <strong>Channel ID</strong> in <a href="/admin/settings">Settings &rarr; YouTube channel</a>. (The stream key sends video out; the Channel ID reads chat back in - they&apos;re different.)</>;
+    if (platform === "Twitch")
+      return <>To also merge <strong>Twitch chat</strong>, add your <strong>Twitch username</strong> in <a href="/admin/settings">Settings &rarr; Merged live chat</a>.</>;
+    if (platform === "Facebook")
+      return <>Facebook video will simulcast with this key. Merged <strong>Facebook chat</strong> is coming soon.</>;
+    return null;
+  }
+
   return (
     <div className="panel">
       <h3>Simulcast destinations</h3>
       <div className="panel-sub">Send your broadcast out to YouTube, Facebook, or Twitch at the same time. Just click Go Live in the studio - no other software needed.</div>
+
+      {/* Two-part setup: the stream key (here) pushes video out; the channel ID /
+          Twitch username (Settings) pulls chat in. Clients kept confusing these. */}
+      <div className="notice" style={{ marginTop: 6 }}>
+        <strong>Two things to set up per platform:</strong>
+        <div style={{ marginTop: 6, fontSize: "13px", lineHeight: 1.5 }}>
+          1. <strong>Video out</strong> - paste each platform&apos;s <strong>stream key</strong> below.<br />
+          2. <strong>Chat in</strong> (optional) - to merge that platform&apos;s chat into your show, set your <strong>YouTube Channel ID</strong> and <strong>Twitch username</strong> in <a href="/admin/settings">Settings</a>. The stream key alone can&apos;t read chat.
+        </div>
+      </div>
 
       <div className="dest-row">
         <div><div className="dest-name">Own platform</div><div className="dest-meta">Your Live page player</div></div>
@@ -149,6 +170,7 @@ export default function SimulcastManager() {
           <label>{platform} stream key</label>
           <input type="password" value={streamKey} placeholder="Paste the stream key" onChange={(e) => setStreamKey(e.target.value)} />
           <p className="form-note">YouTube: Studio -&gt; Create -&gt; Go Live -&gt; copy the <strong>Stream key</strong> (not the URL). Set the broadcast to <strong>Unlisted</strong> or Public - not Private. Turn <strong>Dual stream OFF</strong>.</p>
+          {chatNote() && <p className="form-note" style={{ marginTop: 6 }}>{chatNote()}</p>}
         </div>
         <button className="btn btn-primary btn-sm" type="button" onClick={add} disabled={busy}>{busy ? "Adding..." : "Add destination"}</button>
         {msg && <p className={msg.includes("added") ? "form-ok" : "form-error"} style={{ marginTop: 10 }}>{msg}</p>}
