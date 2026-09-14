@@ -14,21 +14,21 @@ export const NAV: NavItem[] = [
 ];
 
 export const BRAND = {
-  name: "Cane with a Camera",
+  name: "Sebastian Street Studios",
   tagline: "Five shows. One camera.",
-  host: "South Coast Cane",
-  domain: "southcoastcane.com",
+  host: "Sebastian Street Studios",
+  domain: "sebastianstreetstudios.com",
   accent: "#F5A524",
-  emailGeneral: "hello@southcoastcane.com",
-  emailBooking: "booking@southcoastcane.com",
+  emailGeneral: "hello@sebastianstreetstudios.com",
+  emailBooking: "booking@sebastianstreetstudios.com",
 };
 
 export const HERO = {
-  headlinePre: "Real stories from the ",
-  headlineGlow: "South Coast",
+  headlinePre: "Real stories, live from ",
+  headlineGlow: "Sebastian Street",
   headlinePost: ", on our own stage.",
   intro:
-    "Live broadcasts, original series, and the full Cane with a Camera 2.0 film family. Streaming on our own platform and on YouTube at the same time.",
+    "Live broadcasts, original series, and the full Sebastian Street Studios film family. Streaming on our own platform and on YouTube at the same time.",
   primaryLabel: "Watch Live",
   secondaryLabel: "Explore the Shows",
 };
@@ -48,13 +48,13 @@ export type Series = {
 export const SERIES: Series[] = [
   {
     key: "cane-show",
-    title: "The South Coast Cane Show",
+    title: "The Sebastian Street Studios Show",
     tag: "Flagship",
     badge: "Live talk",
     blurb:
       "Two hours of reaction, tape and whatever the chat drags in. No script, no rundown, no producer telling him to wrap.",
     href: "/live",
-    by: "South Coast Cane",
+    by: "Sebastian Street Studios",
     category: "Live\nTalk",
     art: "a2",
   },
@@ -65,7 +65,7 @@ export const SERIES: Series[] = [
     badge: "Long-form",
     blurb: "Unhurried, long-form conversation in the open air. Real perspectives, no studio polish.",
     href: "/library",
-    by: "South Coast Cane",
+    by: "Sebastian Street Studios",
     category: "Long\nForm",
     art: "a5",
   },
@@ -76,18 +76,18 @@ export const SERIES: Series[] = [
     badge: "Short-form",
     blurb: "Two people, one table, whatever came up that week. Under ten minutes, posted straight to the archive.",
     href: "/library",
-    by: "The CEO and South Coast Cane",
+    by: "The CEO and Sebastian Street Studios",
     category: "Short\nForm",
     art: "a3",
   },
   {
     key: "riding",
-    title: "Riding with South Coast Cane",
+    title: "Riding with Sebastian Street Studios",
     tag: "On the road",
     badge: "On the road",
     blurb: "Windshield time and open-road thoughts, shot from the driver's seat. The show that moves with you.",
     href: "/library",
-    by: "South Coast Cane",
+    by: "Sebastian Street Studios",
     category: "On the\nRoad",
     art: "a4",
   },
@@ -114,14 +114,14 @@ export type DemoVideo = {
 
 // Placeholder library rows shown until real videos load from YouTube / Stream.
 export const DEMO_VIDEOS: DemoVideo[] = [
-  { title: "Season Opener: Back on the Coast", seriesKey: "cane-show", seriesName: "The South Coast Cane Show", badge: "The Cane Show", duration: "42:10" },
+  { title: "Season Opener: Back on the Coast", seriesKey: "cane-show", seriesName: "The Sebastian Street Studios Show", badge: "The Show", duration: "42:10" },
   { title: "Late Evening, Long Talk", seriesKey: "patio", seriesName: "Patio Perspectives", badge: "Patio", duration: "28:45" },
-  { title: "The Long Way Home", seriesKey: "riding", seriesName: "Riding with South Coast Cane", badge: "Riding", duration: "19:02" },
+  { title: "The Long Way Home", seriesKey: "riding", seriesName: "Riding with Sebastian Street Studios", badge: "Riding", duration: "19:02" },
   { title: "One Thing About Patience", seriesKey: "one-thing", seriesName: "Let Me Tell You One Thing", badge: "One Thing", duration: "06:31" },
   { title: "Chapter One: The Turn", seriesKey: "rise", seriesName: "Rise of the Fall", badge: "Rise", duration: "51:22" },
-  { title: "Guests and Ground Rules", seriesKey: "cane-show", seriesName: "The South Coast Cane Show", badge: "The Cane Show", duration: "38:04" },
+  { title: "Guests and Ground Rules", seriesKey: "cane-show", seriesName: "The Sebastian Street Studios Show", badge: "The Show", duration: "38:04" },
   { title: "Neighbors and Notes", seriesKey: "patio", seriesName: "Patio Perspectives", badge: "Patio", duration: "33:17" },
-  { title: "Coast Highway at Dusk", seriesKey: "riding", seriesName: "Riding with South Coast Cane", badge: "Riding", duration: "24:50" },
+  { title: "Coast Highway at Dusk", seriesKey: "riding", seriesName: "Riding with Sebastian Street Studios", badge: "Riding", duration: "24:50" },
 ];
 
 export type ScheduleItem = { when: string; title: string; note: string; cover?: string; startsAt?: number; tz?: string };
@@ -175,7 +175,7 @@ export const DEFAULT_BRANDING: SiteBranding = {
   logo: "",
   favicon: "",
   showChannelBug: false,
-  channelBug: "The South Coast Cane Show",
+  channelBug: "The Sebastian Street Studios Show",
   tipsEnabled: true,
   liveDelivery: "own",
   // Falls back to the app's primary channel until a client pastes their own.
@@ -258,9 +258,9 @@ export const DEFAULT_RUNDOWN: SiteRundown = {
 
 export const LIBRARY_FILTERS = [
   { key: "all", label: "All" },
-  { key: "cane-show", label: "The South Coast Cane Show" },
+  { key: "cane-show", label: "The Sebastian Street Studios Show" },
   { key: "rise", label: "Rise of the Fall" },
   { key: "patio", label: "Patio Perspectives" },
-  { key: "riding", label: "Riding with South Coast Cane" },
+  { key: "riding", label: "Riding with Sebastian Street Studios" },
   { key: "one-thing", label: "Let Me Tell You One Thing" },
 ];

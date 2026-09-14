@@ -1,4 +1,4 @@
-// Real YouTube channel identifiers for South Coast Cane.
+// Real YouTube channel identifiers for Sebastian Street Studios.
 // uploadsPlaylist = channel ID with the "UC" prefix swapped for "UU".
 
 export type Channel = {
@@ -17,7 +17,7 @@ function uploads(channelId: string): string {
 export const CHANNELS: Channel[] = [
   {
     key: "cane-show",
-    name: "The South Coast Cane Show",
+    name: "The Sebastian Street Studios Show",
     handle: "@SouthCoastCaneShow",
     url: "https://www.youtube.com/@SouthCoastCaneShow",
     channelId: "UC_HAwaQ2BKMPGClxLv9UXvw",
@@ -25,7 +25,7 @@ export const CHANNELS: Channel[] = [
   },
   {
     key: "south-coast-cane",
-    name: "Retro South Coast Cane",
+    name: "Retro Sebastian Street Studios",
     handle: "@SouthCoastCane",
     url: "https://www.youtube.com/@SouthCoastCane",
     channelId: "UCQhsILAXiBaCPVHjg-8RNhg",

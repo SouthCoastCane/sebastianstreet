@@ -571,7 +571,7 @@ export default function ControlRoom() {
             <div className="panel">
               <h3>On-air graphics</h3>
               <div className="panel-sub">These appear on the broadcast itself (burned into the video).</div>
-              <div className="form-field"><label>Banner title</label><input type="text" value={title} placeholder="South Coast Cane" onChange={(e) => setTitle(e.target.value)} /></div>
+              <div className="form-field"><label>Banner title</label><input type="text" value={title} placeholder="Sebastian Street Studios" onChange={(e) => setTitle(e.target.value)} /></div>
               <div className="form-field"><label>Subtitle (optional)</label><input type="text" value={subtitle} placeholder="Segment 2" onChange={(e) => setSubtitle(e.target.value)} /></div>
               <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
                 <button className="btn btn-primary btn-sm" type="button" onClick={showBanner}>Show banner</button>
@@ -675,7 +675,7 @@ export default function ControlRoom() {
                   );
                 })()}
               </div>
-              <div className="dest-row"><div><div className="dest-name">South Coast Cane (you)</div><div className="dest-meta">host</div></div><span className="pill published">On</span></div>
+              <div className="dest-row"><div><div className="dest-name">Sebastian Street Studios (you)</div><div className="dest-meta">host</div></div><span className="pill published">On</span></div>
               {broadcast.roster.length === 0 && <p className="muted" style={{ fontSize: "13px", marginTop: 10 }}>No guests yet. Share the link above.</p>}
               {broadcast.roster.map((p) => {
                 const onStage = Boolean(p.sessionId && broadcast.admitted.has(p.sessionId));
@@ -807,7 +807,7 @@ export default function ControlRoom() {
                   </div>
                   <div className="form-field">
                     <label>Messages (one per line)</label>
-                    <textarea rows={3} value={scene.ticker} maxLength={2000} placeholder={"Welcome to the show\nFollow us @southcoastcane\nNew episode every week"} onChange={(e) => updateScene({ ticker: e.target.value })} />
+                    <textarea rows={3} value={scene.ticker} maxLength={2000} placeholder={"Welcome to the show\nFollow us @sebastianstreetstudios\nNew episode every week"} onChange={(e) => updateScene({ ticker: e.target.value })} />
                   </div>
                 </>
               )}

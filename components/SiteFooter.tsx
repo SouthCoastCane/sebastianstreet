@@ -53,8 +53,8 @@ export default function SiteFooter({
         </div>
 
         <div className="megamark" aria-hidden="true">
-          <span>Cane with</span>
-          <span>a Camera</span>
+          <span>Sebastian Street</span>
+          <span>Studios</span>
         </div>
       </div>
     </footer>

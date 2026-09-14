@@ -1,4 +1,4 @@
-// South Coast Cane - live chat Worker (Cloudflare Durable Objects)
+// Sebastian Street Studios - live chat Worker (Cloudflare Durable Objects)
 //
 // One Durable Object instance per chat room holds every viewer's WebSocket,
 // keeps the last ~100 messages, and broadcasts a live viewer count. Uses the
@@ -249,7 +249,7 @@ export default {
       return env.CHAT_ROOM.get(id).fetch(request);
     }
 
-    return new Response("South Coast Cane chat worker is running.", {
+    return new Response("Sebastian Street Studios chat worker is running.", {
       status: 200,
       headers: { "content-type": "text/plain" },
     });

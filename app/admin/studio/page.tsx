@@ -87,7 +87,7 @@ export default function StudioPage() {
     if (WS_BASE) {
       const sock = new WebSocket(`${WS_BASE}/room/${SIGNAL_ROOM}/ws`);
       ws.current = sock;
-      const me: Participant = { id: "host", name: "South Coast Cane", role: "host", sessionId: rtc.current?.sessionId, hasVideo: true, hasAudio: true };
+      const me: Participant = { id: "host", name: "Sebastian Street Studios", role: "host", sessionId: rtc.current?.sessionId, hasVideo: true, hasAudio: true };
       sock.onopen = () => sock.send(JSON.stringify({ type: "studio", action: "join", participant: me }));
       sock.onmessage = (e) => {
         let d: any; try { d = JSON.parse(e.data); } catch { return; }
@@ -231,7 +231,7 @@ export default function StudioPage() {
           <div className="panel">
             <h3>In the room</h3>
             <div className="dest-row">
-              <div><div className="dest-name">South Coast Cane (you)</div><div className="dest-meta">host</div></div>
+              <div><div className="dest-name">Sebastian Street Studios (you)</div><div className="dest-meta">host</div></div>
               <span className="pill published">On</span>
             </div>
             {roster.length === 0 && <p className="muted" style={{ fontSize: "13px", marginTop: 12 }}>No guests yet. Share the invite link.</p>}

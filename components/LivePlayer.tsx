@@ -39,7 +39,7 @@ export default function LivePlayer({ src, logo }: { src: string; logo?: string }
         <iframe
           key={key}
           src={`${src}${sep}autoplay=true&muted=true`}
-          title="South Coast Cane live"
+          title="Sebastian Street Studios live"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
         />

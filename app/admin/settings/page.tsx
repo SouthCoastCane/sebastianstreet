@@ -134,8 +134,8 @@ export default function AdminSettings() {
             <h3>Brand</h3>
             <div className="panel-sub">Edit names and colors under Branding. Saved changes apply site-wide.</div>
             <div className="panel-split">
-              <div className="form-field"><label>Site name</label><input type="text" defaultValue="South Coast Cane" readOnly /></div>
-              <div className="form-field"><label>Domain</label><input type="text" defaultValue="southcoastcane.com" readOnly /></div>
+              <div className="form-field"><label>Site name</label><input type="text" defaultValue="Sebastian Street Studios" readOnly /></div>
+              <div className="form-field"><label>Domain</label><input type="text" defaultValue="sebastianstreetstudios.com" readOnly /></div>
             </div>
           </div>
           <div className="panel">
@@ -194,7 +194,7 @@ export default function AdminSettings() {
           <div className="panel">
             <h3>Account</h3>
             <div className="panel-sub">Your Studio sign-in.</div>
-            <div className="form-field"><label>Email</label><input type="email" defaultValue="creator@southcoastcane.com" /></div>
+            <div className="form-field"><label>Email</label><input type="email" defaultValue="creator@sebastianstreetstudios.com" /></div>
             <button className="btn btn-ghost btn-sm" type="button">Change password</button>
           </div>
         </div>

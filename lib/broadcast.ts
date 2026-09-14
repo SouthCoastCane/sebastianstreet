@@ -1229,7 +1229,7 @@ class StudioEngine {
     try { this.ws?.close(); } catch { /* none */ }
     const sock = new WebSocket(`${WS_BASE}/room/${SIGNAL_ROOM}/ws`);
     this.ws = sock;
-    const me: Participant = { id: "host", name: "South Coast Cane", role: "host", sessionId: this.rtc?.sessionId, hasVideo: true, hasAudio: true };
+    const me: Participant = { id: "host", name: "Sebastian Street Studios", role: "host", sessionId: this.rtc?.sessionId, hasVideo: true, hasAudio: true };
     sock.onopen = () => sock.send(JSON.stringify({ type: "studio", action: "join", participant: me }));
     // On reload/close, tell the room the host left so no stale "host" lingers
     // (a ghost host session is one thing that makes a guest's video freeze).

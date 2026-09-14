@@ -31,7 +31,7 @@ export default async function AdminAnalytics() {
 
       <div className="panel">
         <h3>Recent uploads</h3>
-        <div className="panel-sub">The South Coast Cane Show - latest from YouTube.</div>
+        <div className="panel-sub">The Sebastian Street Studios Show - latest from YouTube.</div>
         {recent.length ? (
           <ul className="rank-list">
             {recent.map((v, i) => (

@@ -81,7 +81,7 @@ export default function OnAirControl() {
         <div className="panel">
           <h3>Lower-third banner</h3>
           <div className="panel-sub">A headline that sits at the bottom of the broadcast.</div>
-          <div className="form-field"><label>Title</label><input type="text" value={title} placeholder="South Coast Cane" onChange={(e) => setTitle(e.target.value)} /></div>
+          <div className="form-field"><label>Title</label><input type="text" value={title} placeholder="Sebastian Street Studios" onChange={(e) => setTitle(e.target.value)} /></div>
           <div className="form-field"><label>Subtitle (optional)</label><input type="text" value={subtitle} placeholder="Segment 2 - what the tape showed" onChange={(e) => setSubtitle(e.target.value)} /></div>
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn btn-primary btn-sm" type="button" onClick={showBanner} disabled={!connected}>Show on stream</button>

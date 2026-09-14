@@ -36,8 +36,8 @@ export default async function LivePage() {
       <div className="wrap">
         <div className="livehead">
           <div>
-            <div className="showname">The South Coast Cane Show</div>
-            <h1 className="anton">Live from the South Coast</h1>
+            <div className="showname">The Sebastian Street Studios Show</div>
+            <h1 className="anton">Live from Sebastian Street Studios</h1>
           </div>
           <div className="elapsed">
             <AirStatus initial={live.live} />

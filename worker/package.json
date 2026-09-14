@@ -1,8 +1,8 @@
 {
-  "name": "south-coast-cane-chat",
+  "name": "sebastian-street-studios-chat",
   "version": "0.1.0",
   "private": true,
-  "description": "Live chat Worker for South Coast Cane, using Cloudflare Durable Objects",
+  "description": "Live chat Worker for Sebastian Street Studios, using Cloudflare Durable Objects",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"

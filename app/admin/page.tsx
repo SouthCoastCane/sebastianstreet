@@ -7,7 +7,7 @@ import { getCostEstimate } from "@/lib/costEstimate";
 import BarChart from "@/components/BarChart";
 
 const money = (n: number) => "$" + n.toLocaleString(undefined, { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
-const SHORT: Record<string, string> = { "cane-show": "Cane Show", "south-coast-cane": "Retro", "one-thing": "Let Me Tell U" };
+const SHORT: Record<string, string> = { "cane-show": "Main Show", "south-coast-cane": "Retro", "one-thing": "Let Me Tell U" };
 const DAYS = 14;
 const dayMs = 86400000;
 
@@ -92,7 +92,7 @@ export default async function AdminOverview() {
         <div className="stat-card"><div className="k">Videos</div><div className="v">{formatCount(stats?.videos)}</div><div className="d flat">Published on YouTube</div></div>
         <div className="stat-card"><div className="k">Revenue</div><div className="v">{money(revenueTotal)}</div><div className="d flat">{weekRevenue > 0 ? `${money(weekRevenue)} this week` : "Tips, all-time"}</div></div>
         <div className="stat-card"><div className="k">Est. cost / show</div><div className="v">{money(Math.round(cost.estimate.perShow))}</div><div className="d flat">~{cost.estimate.typicalViewers.toLocaleString()} viewers x {cost.estimate.avgShowMinutes} min</div></div>
-        <div className="stat-card"><div className="k">Live status</div><div className="v">{live.live ? "On air" : "Off air"}</div><div className="d flat">{live.viewers != null ? `${live.viewers.toLocaleString()} watching` : "The South Coast Cane Show"}</div></div>
+        <div className="stat-card"><div className="k">Live status</div><div className="v">{live.live ? "On air" : "Off air"}</div><div className="d flat">{live.viewers != null ? `${live.viewers.toLocaleString()} watching` : "The Sebastian Street Studios Show"}</div></div>
       </div>
 
       <div className="two-col">

@@ -25,11 +25,11 @@ export async function generateMetadata(): Promise<Metadata> {
   const { branding } = await getSiteConfig();
   return {
     title: {
-      default: `${branding.siteName} - Cane with a Camera`,
+      default: branding.siteName,
       template: `%s - ${branding.siteName}`,
     },
     description:
-      "Cane with a Camera - an independent studio making five shows. Live talk, long-form, from the road, and a documentary series. Watch here and on YouTube at the same time.",
+      "Sebastian Street Studios - an independent studio making five shows. Live talk, long-form, from the road, and a documentary series. Watch here and on YouTube at the same time.",
     ...(branding.favicon ? { icons: { icon: branding.favicon } } : {}),
   };
 }

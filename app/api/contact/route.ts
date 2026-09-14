@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   const apiKey = process.env.RESEND_API_KEY;
-  const to = process.env.CONTACT_TO_EMAIL || "hello@southcoastcane.com";
+  const to = process.env.CONTACT_TO_EMAIL || "hello@sebastianstreetstudios.com";
 
   if (!apiKey) {
     console.log("[contact] (no email provider configured yet)", { name, email, subject, message });
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "South Coast Cane <onboarding@resend.dev>",
+        from: "Sebastian Street Studios <onboarding@resend.dev>",
         to: [to],
         reply_to: email,
         subject: `[Website] ${subject}`,

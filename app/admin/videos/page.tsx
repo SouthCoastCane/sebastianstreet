@@ -38,7 +38,7 @@ export default async function AdminVideos() {
       {!youtubeConfigured && (
         <div className="notice" style={{ marginBottom: 22 }}>
           <strong>YouTube not connected.</strong> Add YOUTUBE_API_KEY and this list fills with the
-          real videos from The South Coast Cane Show.
+          real videos from The Sebastian Street Studios Show.
         </div>
       )}
 

@@ -176,7 +176,7 @@ export default function AdminBranding() {
             {form.showChannelBug && (
               <div className="form-field" style={{ marginTop: 12 }}>
                 <label>Label text</label>
-                <input type="text" value={form.channelBug} placeholder="The South Coast Cane Show" onChange={(e) => set("channelBug", e.target.value)} />
+                <input type="text" value={form.channelBug} placeholder="The Sebastian Street Studios Show" onChange={(e) => set("channelBug", e.target.value)} />
               </div>
             )}
           </div>

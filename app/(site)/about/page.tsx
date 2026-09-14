@@ -16,7 +16,7 @@ export default async function AboutPage() {
     <>
       <section className="page-hero">
         <div className="wrap">
-          <span className="eyebrow">What&apos;s Cane with a Camera?</span>
+          <span className="eyebrow">What&apos;s Sebastian Street Studios?</span>
           <h1 className="anton">One studio.<br /><span className="or">Five shows.</span></h1>
         </div>
       </section>

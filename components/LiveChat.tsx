@@ -20,7 +20,7 @@ type ChatMessage = { id: string; name: string; text: string; ts: number; tip?: n
 
 const WS_BASE = process.env.NEXT_PUBLIC_CHAT_WS_URL || "";
 const ROOM = "live";
-const HOST = "South Coast Cane";
+const HOST = "Sebastian Street Studios";
 const TIP_PRESETS = [2, 5, 10, 20];
 
 const DEMO: ChatMessage[] = [

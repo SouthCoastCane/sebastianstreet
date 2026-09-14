@@ -197,7 +197,7 @@ export default function AdminSchedule() {
             <div className="form-field"><label>Date &amp; time</label><input type="datetime-local" value={dt} onChange={(e) => setDt(e.target.value)} /></div>
             <div className="form-field"><label>Timezone</label><select value={tz} onChange={(e) => setTz(e.target.value)}>{TZ_OPTIONS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select></div>
           </div>
-          <div className="form-field"><label>Show</label><input type="text" placeholder="The South Coast Cane Show" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+          <div className="form-field"><label>Show</label><input type="text" placeholder="The Sebastian Street Studios Show" value={title} onChange={(e) => setTitle(e.target.value)} /></div>
           <div className="form-field"><label>Note</label><input type="text" placeholder="Weekly flagship broadcast" value={note} onChange={(e) => setNote(e.target.value)} /></div>
           <div className="form-field">
             <label>Cover image (optional)</label>
