@@ -20,23 +20,32 @@ export async function getUploads(
   max = 12
 ): Promise<YtVideo[]> {
   if (!KEY) return [];
-  const url = `${API}/playlistItems?part=snippet&maxResults=${max}&playlistId=${uploadsPlaylistId}&key=${KEY}`;
+  const out: YtVideo[] = [];
+  let pageToken = "";
   try {
-    const res = await fetch(url, { next: { revalidate: 1800 } });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data.items ?? []).map((item: any) => {
-      const s = item.snippet ?? {};
-      const t = s.thumbnails ?? {};
-      return {
-        id: s.resourceId?.videoId ?? "",
-        title: s.title ?? "",
-        publishedAt: s.publishedAt ?? "",
-        thumbnail: (t.medium ?? t.high ?? t.default ?? {}).url ?? "",
-      } as YtVideo;
-    });
+    // Page through the uploads playlist (50 per call) until we hit `max` or run
+    // out, so channels with more than one page still show every video.
+    while (out.length < max) {
+      const url = `${API}/playlistItems?part=snippet&maxResults=50&playlistId=${uploadsPlaylistId}&key=${KEY}${pageToken ? `&pageToken=${pageToken}` : ""}`;
+      const res = await fetch(url, { next: { revalidate: 1800 } });
+      if (!res.ok) break;
+      const data = await res.json();
+      for (const item of data.items ?? []) {
+        const s = item.snippet ?? {};
+        const t = s.thumbnails ?? {};
+        out.push({
+          id: s.resourceId?.videoId ?? "",
+          title: s.title ?? "",
+          publishedAt: s.publishedAt ?? "",
+          thumbnail: (t.medium ?? t.high ?? t.default ?? {}).url ?? "",
+        } as YtVideo);
+      }
+      pageToken = data.nextPageToken ?? "";
+      if (!pageToken) break;
+    }
+    return out.slice(0, max);
   } catch {
-    return [];
+    return out;
   }
 }
 

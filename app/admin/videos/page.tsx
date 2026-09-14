@@ -1,13 +1,19 @@
 import { getUploads, youtubeConfigured } from "@/lib/youtube";
 import { PRIMARY_CHANNEL } from "@/lib/channels";
+import { getSiteConfig } from "@/lib/siteConfig";
 import { listStreamVideos, streamIframeSrc } from "@/lib/stream";
 import UploadVideoButton from "@/components/UploadVideoButton";
 
 type Row = { id: string; title: string; thumbnail: string; publishedAt: number; source: "yt" | "cf"; href: string };
 
 export default async function AdminVideos() {
+  // Pull uploads from the channel the client configured in Settings (falls back
+  // to the app default). The uploads playlist is the channel id with UC -> UU.
+  const { branding } = await getSiteConfig();
+  const channelId = branding.youtubeChannelId || PRIMARY_CHANNEL.channelId;
+  const uploadsPlaylist = /^UC/.test(channelId) ? "UU" + channelId.slice(2) : PRIMARY_CHANNEL.uploadsPlaylist;
   const [ytVideos, streamVids] = await Promise.all([
-    getUploads(PRIMARY_CHANNEL.uploadsPlaylist, 25),
+    getUploads(uploadsPlaylist, 200),
     listStreamVideos(),
   ]);
   // Merge YouTube uploads + Cloudflare Stream videos (recordings + uploads),
