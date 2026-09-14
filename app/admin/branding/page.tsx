@@ -222,7 +222,9 @@ export default function AdminBranding() {
               )}
               <span className="brand-name">{form.siteName}<span>{form.tagline}</span></span>
             </div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {/* Scope the brand vars here so the tinted backgrounds (e.g. the live
+                pill fill) reflect edits live, before saving. */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", ["--accent" as any]: form.accent, ["--live" as any]: form.live }}>
               <button className="btn btn-primary btn-sm" type="button" style={{ background: form.accent }}>Primary button</button>
               <button className="btn btn-ghost btn-sm" type="button">Ghost button</button>
               <span className="live-pill is-live" style={{ borderColor: form.live }}><span className="dot" style={{ background: form.live }} /><span>Live now</span></span>
