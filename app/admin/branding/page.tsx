@@ -227,7 +227,7 @@ export default function AdminBranding() {
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", ["--accent" as any]: form.accent, ["--live" as any]: form.live }}>
               <button className="btn btn-primary btn-sm" type="button" style={{ background: form.accent }}>Primary button</button>
               <button className="btn btn-ghost btn-sm" type="button">Ghost button</button>
-              <span className="live-pill is-live" style={{ borderColor: form.live }}><span className="dot" style={{ background: form.live }} /><span>Live now</span></span>
+              <span className="live-pill is-live" style={{ borderColor: form.live, background: form.live, color: "#151107" }}><span className="dot" style={{ background: "#151107" }} /><span>Live now</span></span>
             </div>
           </div>
         </div>
