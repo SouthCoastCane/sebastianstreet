@@ -6,10 +6,18 @@ import { getIdToken } from "@/lib/firebase";
 import SimulcastManager from "@/components/SimulcastManager";
 import LivePipModal from "@/components/LivePipModal";
 import { PRIMARY_CHANNEL } from "@/lib/channels";
+import { connectTwitchChat } from "@/lib/twitchChat";
 
 const WS_BASE = process.env.NEXT_PUBLIC_CHAT_WS_URL || "";
 type Tab = "onair" | "chat" | "guests" | "sources" | "scene" | "intro" | "sounds" | "audio" | "rundown";
-type ChatMessage = { id: string; name: string; text: string; uid?: string; tip?: number };
+type ChatMessage = { id: string; name: string; text: string; uid?: string; tip?: number; source?: "site" | "youtube" | "twitch" | "facebook" };
+
+// Small source badge (Site / YT / TW / FB) shown before a chat message.
+const SRC_LABEL: Record<string, string> = { youtube: "YT", twitch: "TW", facebook: "FB", site: "Site" };
+function srcBadge(source?: string) {
+  const key = source || "site";
+  return <span className={`src src-${key}`}>{SRC_LABEL[key] || "Site"}</span>;
+}
 type SceneCfg = { enabled: boolean; mode: "none" | "chroma" | "ml"; chroma: string; background: string; frame: string; logo: string; tickerOn: boolean; tickerLabel: string; ticker: string };
 type BumperCfg = { enabled: boolean; mode: "card" | "video"; headline: string; subtext: string; background: string; videoUrl: string; startsAt: number };
 type SoundPad = { id: string; label: string; url: string };
@@ -76,6 +84,7 @@ export default function ControlRoom() {
   const [sessionCost, setSessionCost] = useState(0);
   const [liveDelivery, setLiveDelivery] = useState<"own" | "youtube">("own");
   const [ytChannelId, setYtChannelId] = useState(PRIMARY_CHANNEL.channelId);
+  const [twitchChannel, setTwitchChannel] = useState("");
   const [rundown, setRundown] = useState<RundownCfg>({ enabled: false, title: "RUNDOWN", showTimer: true, activeIndex: 0, items: [] });
   const [rundownMsg, setRundownMsg] = useState("");
   const [pip, setPip] = useState(false);
@@ -156,6 +165,7 @@ export default function ControlRoom() {
         if (d?.branding?.accent) broadcast.setBrandAccent(d.branding.accent);
         if (d?.branding?.liveDelivery) setLiveDelivery(d.branding.liveDelivery);
         if (d?.branding?.youtubeChannelId) setYtChannelId(d.branding.youtubeChannelId);
+        if (d?.branding?.twitchChannel !== undefined) setTwitchChannel(d.branding.twitchChannel || "");
         if (d?.scene) { const sc = { tickerOn: false, tickerLabel: "", ticker: "", ...d.scene }; setScene(sc); broadcast.setScene(sc); }
         if (d?.bumper) { const bm = { enabled: false, mode: "card", headline: "Starting soon", subtext: "", background: "", videoUrl: "", startsAt: 0, ...d.bumper } as BumperCfg; setBumper(bm); broadcast.setBumper(bm); }
         if (d?.rundown) { const rn = { enabled: false, title: "RUNDOWN", showTimer: true, activeIndex: 0, items: [], ...d.rundown } as RundownCfg; rn.items = (rn.items || []).map((it: any) => ({ title: it?.title ?? "", image: it?.image ?? "", seconds: Number(it?.seconds) || 0 })); setRundown(rn); broadcast.setRundown(rn); }
@@ -402,6 +412,55 @@ export default function ControlRoom() {
     return () => { ow.close(); cw.close(); clearInterval(costTimer); };
   }, []);
 
+  // Push an external (YouTube/Twitch) message into the chat room. The worker
+  // stores + broadcasts it to everyone (site + studio) and de-dupes by extId.
+  const injectChat = (m: { name: string; text: string; source: string; extId: string }) => {
+    const cw = chatWs.current;
+    if (cw && cw.readyState === WebSocket.OPEN) cw.send(JSON.stringify({ type: "chat", uid: "", ...m }));
+  };
+
+  // Merge YouTube live chat while broadcasting. Polls a server route (keeps the
+  // API key server-side) at YouTube's recommended interval; the backlog on the
+  // first pass is skipped so we only inject messages that arrive once live.
+  useEffect(() => {
+    if (!broadcast.live) return;
+    let stop = false, liveChatId = "", pageToken = "", firstPass = true;
+    let timer: ReturnType<typeof setTimeout>;
+    async function poll() {
+      if (stop) return;
+      let delay = 6000;
+      try {
+        const token = await getIdToken();
+        const qs = new URLSearchParams();
+        if (liveChatId) qs.set("liveChatId", liveChatId);
+        if (pageToken) qs.set("pageToken", pageToken);
+        if (ytChannelId) qs.set("channelId", ytChannelId);
+        const r = await fetch(`/api/chat/youtube?${qs.toString()}`, { headers: token ? { Authorization: `Bearer ${token}` } : {}, cache: "no-store" });
+        const d = await r.json();
+        if (d.live && d.liveChatId) {
+          liveChatId = d.liveChatId;
+          if (!firstPass && Array.isArray(d.messages)) {
+            for (const m of d.messages) injectChat({ name: m.name, text: m.text, source: "youtube", extId: "yt_" + m.id });
+          }
+          pageToken = d.pageToken || pageToken;
+          delay = Math.min(Math.max(Number(d.pollingMs) || 6000, 3000), 15000);
+          firstPass = false;
+        } else {
+          liveChatId = ""; pageToken = ""; firstPass = true; delay = 12000; // not live yet / ended
+        }
+      } catch { delay = 12000; }
+      if (!stop) timer = setTimeout(poll, delay);
+    }
+    poll();
+    return () => { stop = true; clearTimeout(timer); };
+  }, [broadcast.live, ytChannelId]);
+
+  // Merge Twitch chat while broadcasting (anonymous read, real-time).
+  useEffect(() => {
+    if (!broadcast.live || !twitchChannel) return;
+    return connectTwitchChat(twitchChannel, (m) => injectChat({ name: m.name, text: m.text, source: "twitch", extId: "tw_" + m.id }));
+  }, [broadcast.live, twitchChannel]);
+
   // Push graphics to BOTH the browser composite (engine) and the OBS overlay.
   const pushOverlay = (cmd: Record<string, unknown>) => overlayWs.current?.send(JSON.stringify({ type: "overlay", ...cmd }));
   const showBanner = () => { if (!title.trim()) return; broadcast.setBanner(title, subtitle); pushOverlay({ action: "banner", title, subtitle }); };
@@ -618,7 +677,7 @@ export default function ControlRoom() {
                 {chat.map((m) => (
                   <div className="mod-row" key={m.id}>
                     <div className={`msg${m.tip ? " tipmsg" : ""}`} style={{ minWidth: 0 }}>
-                      {m.tip ? <><span className="tipamt">${m.tip.toFixed(2)}</span><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}</> : <><span className="src">Site</span><b>{m.name}</b> {m.text}</>}
+                      {m.tip ? <><span className="tipamt">${m.tip.toFixed(2)}</span><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}</> : <>{srcBadge(m.source)}<b>{m.name}</b> {m.text}</>}
                     </div>
                     {m.uid && (
                       <div className="mod-actions">

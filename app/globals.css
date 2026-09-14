@@ -488,6 +488,12 @@ h2.big{font-size:clamp(30px,4.4vw,56px);line-height:.92}
 .msg b{font-weight:700;margin-right:6px}
 .msg.is-host b{color:var(--amber)}
 .msg .src{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-right:7px}
+/* Platform source badges (shared by the site chat + Studio moderation list).
+   Doubled class keeps specificity above ".msg .src" so the color wins. */
+.src{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-right:7px;display:inline-block}
+.src.src-youtube{color:#fff;background:#ff0033;border-color:#ff0033}
+.src.src-twitch{color:#fff;background:#9146ff;border-color:#9146ff}
+.src.src-facebook{color:#fff;background:#1877f2;border-color:#1877f2}
 .chat-f{border-top:1px solid var(--line);padding:13px 16px;display:flex;gap:9px}
 .chat-f input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);color:var(--cream);border-radius:999px;padding:11px 16px;font:inherit;font-size:13px}
 .chat-f input::placeholder{color:#6B6055}

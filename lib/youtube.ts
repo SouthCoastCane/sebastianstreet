@@ -74,6 +74,73 @@ export async function getLiveInfo(channelId: string): Promise<LiveInfo> {
   }
 }
 
+// ---- Live chat: read messages from an active broadcast (public, API key) ----
+
+// Resolve the active live broadcast's chat id for a channel, or null if the
+// channel isn't live (or has live chat disabled).
+export async function getActiveLiveChatId(channelId: string): Promise<string | null> {
+  if (!KEY) return null;
+  const videoId = await getLiveVideoId(channelId);
+  if (!videoId) return null;
+  try {
+    const res = await fetch(
+      `${API}/videos?part=liveStreamingDetails&id=${videoId}&key=${KEY}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.items?.[0]?.liveStreamingDetails?.activeLiveChatId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export type LiveChatMessage = { id: string; name: string; text: string; ts: number };
+export type LiveChatPage = {
+  messages: LiveChatMessage[];
+  pageToken: string | null; // pass back next call to get only newer messages
+  pollingMs: number;        // YouTube's recommended poll interval
+};
+
+// One page of live chat messages. Pass the previous pageToken to fetch only
+// messages newer than the last call.
+export async function getLiveChatMessages(
+  liveChatId: string,
+  pageToken?: string
+): Promise<LiveChatPage | null> {
+  if (!KEY) return null;
+  const params = new URLSearchParams({
+    liveChatId,
+    part: "snippet,authorDetails",
+    maxResults: "200",
+    key: KEY,
+  });
+  if (pageToken) params.set("pageToken", pageToken);
+  try {
+    const res = await fetch(`${API}/liveChat/messages?${params.toString()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const messages: LiveChatMessage[] = (data.items ?? [])
+      .map((it: any) => {
+        const s = it.snippet ?? {};
+        return {
+          id: String(it.id ?? ""),
+          name: String(it.authorDetails?.displayName ?? "YouTube"),
+          text: String(s.displayMessage ?? s.textMessageDetails?.messageText ?? ""),
+          ts: Date.parse(s.publishedAt ?? "") || Date.now(),
+        } as LiveChatMessage;
+      })
+      .filter((m: LiveChatMessage) => m.text);
+    return {
+      messages,
+      pageToken: data.nextPageToken ?? null,
+      pollingMs: Number(data.pollingIntervalMillis) || 5000,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export type ChannelStats = { subscribers: number; views: number; videos: number };
 
 // Aggregate statistics across one or more channels (one API call).

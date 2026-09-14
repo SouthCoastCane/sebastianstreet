@@ -16,7 +16,9 @@ import {
   type User,
 } from "firebase/auth";
 
-type ChatMessage = { id: string; name: string; text: string; ts: number; tip?: number };
+type ChatMessage = { id: string; name: string; text: string; ts: number; tip?: number; source?: "site" | "youtube" | "twitch" | "facebook" };
+
+const SRC_LABEL: Record<string, string> = { youtube: "YT", twitch: "TW", facebook: "FB", site: "Site" };
 
 const WS_BASE = process.env.NEXT_PUBLIC_CHAT_WS_URL || "";
 const ROOM = "live";
@@ -289,7 +291,7 @@ export default function LiveChat({ asGuest }: { asGuest?: string } = {}) {
             </div>
           ) : (
             <div className={`msg${m.name === HOST ? " is-host" : ""}`} key={m.id}>
-              <span className="src">Site</span><b>{m.name}</b>{m.text}
+              <span className={`src src-${m.source || "site"}`}>{SRC_LABEL[m.source || "site"] || "Site"}</span><b>{m.name}</b>{m.text}
             </div>
           )
         )}

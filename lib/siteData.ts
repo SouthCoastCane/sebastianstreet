@@ -163,6 +163,7 @@ export type SiteBranding = {
   tipsEnabled: boolean; // show the tip / "Send a tip" buttons in chat
   liveDelivery: "own" | "youtube"; // site player: own Cloudflare (paid) or free YouTube embed
   youtubeChannelId: string; // the channel the live embed + "Watch on YouTube" point at
+  twitchChannel: string; // twitch username to merge chat from (blank = off)
 };
 
 export const DEFAULT_BRANDING: SiteBranding = {
@@ -180,6 +181,7 @@ export const DEFAULT_BRANDING: SiteBranding = {
   liveDelivery: "own",
   // Falls back to the app's primary channel until a client pastes their own.
   youtubeChannelId: "UC_HAwaQ2BKMPGClxLv9UXvw",
+  twitchChannel: "",
 };
 
 // Branded "scene": background behind the host, optional green-screen removal,

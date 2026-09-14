@@ -16,8 +16,13 @@ type ChatMessage = {
   text: string;
   uid: string; // signed-in viewer id (for moderation)
   tip?: number; // dollar amount when this is a paid tip message
+  source?: "site" | "youtube" | "twitch" | "facebook"; // where the message came from
+  extId?: string; // stable id from the external platform, for de-duplication
   ts: number;
 };
+
+const SOURCES = ["site", "youtube", "twitch", "facebook"] as const;
+type Source = (typeof SOURCES)[number];
 
 const MAX_HISTORY = 100;
 const MAX_TEXT = 500;
@@ -108,6 +113,15 @@ export class ChatRoom {
     const name = (String(data.name ?? "Guest").slice(0, MAX_NAME).trim() || "Guest").replace(/[\r\n]/g, " ");
     if (!text) return;
 
+    // Source + external id let us merge YouTube/Twitch chat into this room. When
+    // an extId is present, drop duplicates (e.g. two studios injecting the same
+    // platform message).
+    const source: Source = SOURCES.includes(data.source) ? data.source : "site";
+    const extId = data.extId ? String(data.extId).slice(0, 128) : undefined;
+
+    const history = (await this.state.storage.get<ChatMessage[]>("history")) ?? [];
+    if (extId && history.some((m) => m.extId === extId)) return;
+
     const msg: ChatMessage = {
       type: "chat",
       id: crypto.randomUUID(),
@@ -115,9 +129,10 @@ export class ChatRoom {
       text,
       uid,
       ts: Date.now(),
+      ...(source !== "site" ? { source } : {}),
+      ...(extId ? { extId } : {}),
     };
 
-    const history = (await this.state.storage.get<ChatMessage[]>("history")) ?? [];
     history.push(msg);
     while (history.length > MAX_HISTORY) history.shift();
     await this.state.storage.put("history", history);

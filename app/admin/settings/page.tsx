@@ -27,15 +27,40 @@ export default function AdminSettings() {
   const [ytChannel, setYtChannel] = useState("");
   const [ytSaving, setYtSaving] = useState(false);
   const [ytMsg, setYtMsg] = useState("");
+  const [twitch, setTwitch] = useState("");
+  const [twSaving, setTwSaving] = useState(false);
+  const [twMsg, setTwMsg] = useState("");
 
   useEffect(() => {
     loadConfig()
       .then((cfg) => {
         setTips(cfg?.branding?.tipsEnabled !== false);
         setYtChannel(cfg?.branding?.youtubeChannelId || "");
+        setTwitch(cfg?.branding?.twitchChannel || "");
       })
       .catch(() => {});
   }, []);
+
+  async function saveTwitch() {
+    // Accept a bare username, or a twitch.tv/<name> URL; store just the username.
+    const raw = twitch.trim().replace(/^https?:\/\/(www\.)?twitch\.tv\//i, "").replace(/\/.*$/, "");
+    const name = raw.toLowerCase();
+    if (name && !/^[a-z0-9_]{3,25}$/.test(name)) {
+      setTwMsg("That doesn't look like a Twitch username.");
+      return;
+    }
+    setTwSaving(true);
+    setTwMsg("");
+    try {
+      await saveSection("branding", { twitchChannel: name });
+      setTwitch(name);
+      setTwMsg("Saved.");
+    } catch {
+      setTwMsg("Could not save.");
+    } finally {
+      setTwSaving(false);
+    }
+  }
 
   async function saveYtChannel() {
     const id = ytChannel.trim();
@@ -160,6 +185,33 @@ export default function AdminSettings() {
               </button>
               {ytMsg && <span className="dest-meta">{ytMsg}</span>}
             </div>
+          </div>
+          <div className="panel">
+            <h3>Merged live chat</h3>
+            <div className="panel-sub">
+              During a broadcast, viewers&apos; messages from YouTube and Twitch are pulled into
+              your site chat and the Studio, so you see everyone in one place. YouTube uses the
+              channel above. For Twitch, enter your <strong>channel username</strong>.
+            </div>
+            <div className="form-field">
+              <label>Twitch username</label>
+              <input
+                type="text"
+                value={twitch}
+                placeholder="yourchannel"
+                onChange={(e) => { setTwitch(e.target.value); setTwMsg(""); }}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button className="btn btn-primary btn-sm" type="button" onClick={saveTwitch} disabled={twSaving}>
+                {twSaving ? "Saving..." : "Save Twitch"}
+              </button>
+              {twMsg && <span className="dest-meta">{twMsg}</span>}
+            </div>
+            <p className="form-note" style={{ marginTop: 10 }}>
+              Chat is merged one-way (read into your site). Messages typed on your site are not
+              posted back out to YouTube/Twitch. Leave Twitch blank to turn it off.
+            </p>
           </div>
         </div>
         <div>
