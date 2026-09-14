@@ -28,3 +28,33 @@ export async function GET(request: Request) {
     return NextResponse.json({ configured: true, tips: [], total: 0, count: 0 });
   }
 }
+
+// DELETE -> wipe the local tip history (e.g. clearing test data before launch).
+// Owner-only. This only removes the display records in Firestore; it does NOT
+// touch Stripe payments or payouts (that money already moved).
+export async function DELETE(request: Request) {
+  if (!adminConfigured) return NextResponse.json({ error: "Not configured." }, { status: 400 });
+  const role = await requireRole(request);
+  if (role !== "owner") {
+    return NextResponse.json({ error: "Only the owner can clear tips." }, { status: 403 });
+  }
+  const db = getAdminDb();
+  if (!db) return NextResponse.json({ error: "Not configured." }, { status: 400 });
+
+  try {
+    let deleted = 0;
+    // Delete in batches until the collection is empty.
+    for (;;) {
+      const snap = await db.collection("tips").limit(400).get();
+      if (snap.empty) break;
+      const batch = db.batch();
+      snap.docs.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+      deleted += snap.size;
+      if (snap.size < 400) break;
+    }
+    return NextResponse.json({ ok: true, deleted });
+  } catch {
+    return NextResponse.json({ error: "Could not clear tips." }, { status: 500 });
+  }
+}

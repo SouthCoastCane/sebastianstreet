@@ -19,6 +19,7 @@ export default function AdminTips() {
   const [tips, setTips] = useState<Tip[]>([]);
   const [total, setTotal] = useState(0);
   const [state, setState] = useState<"loading" | "ready" | "demo" | "error">("loading");
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -32,6 +33,24 @@ export default function AdminTips() {
       } catch { setState("error"); }
     })();
   }, []);
+
+  // Clear the local tip history - used to wipe test data before launch. Does
+  // NOT affect Stripe payments/payouts. Owner-only (enforced on the server).
+  async function clearTips() {
+    const ok = window.confirm(
+      "Delete all tip records shown here?\n\nThis is for clearing test data. It permanently removes the tip history on this page and cannot be undone. It does NOT affect Stripe payments or payouts."
+    );
+    if (!ok) return;
+    setClearing(true);
+    try {
+      const token = await getIdToken();
+      const res = await fetch("/api/admin/tips", { method: "DELETE", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const d = await res.json();
+      if (!res.ok) { alert(d.error || "Could not clear tips."); return; }
+      setTips([]); setTotal(0);
+    } catch { alert("Could not clear tips."); }
+    finally { setClearing(false); }
+  }
 
   // Export every saved tip (permanent Firestore record) as a CSV file.
   function downloadCsv() {
@@ -68,6 +87,7 @@ export default function AdminTips() {
         {state === "ready" && tips.length > 0 && (
           <div className="admin-actions">
             <button className="btn btn-ghost btn-sm" type="button" onClick={downloadCsv}>Download CSV</button>
+            <button className="btn btn-ghost btn-sm" type="button" onClick={clearTips} disabled={clearing}>{clearing ? "Clearing..." : "Clear test data"}</button>
           </div>
         )}
       </div>
