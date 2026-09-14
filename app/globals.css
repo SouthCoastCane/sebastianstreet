@@ -6,8 +6,14 @@
 
 :root{
   /* palette */
-  --bg:#0A0908; --bg2:#141110; --bg3:#1C1714;
-  --bg-elevated:#141110; --bg-card:#141110;
+  --bg:#0A0908;
+  /* Panels, cards, inputs and the sidebar lift slightly off the brand
+     background so they follow the client's color instead of a fixed warm
+     charcoal (which read as brown on a non-neutral background). */
+  --bg2:color-mix(in srgb, var(--bg) 92%, #ffffff);
+  --bg3:color-mix(in srgb, var(--bg) 84%, #ffffff);
+  --bg-elevated:color-mix(in srgb, var(--bg) 92%, #ffffff);
+  --bg-card:color-mix(in srgb, var(--bg) 92%, #ffffff);
   --cream:#F3EFE7; --ink:#F3EFE7; --text:#F3EFE7;
   --mute:#9A9287; --text-muted:#9A9287; --text-dim:#6B6055;
   --amber:#F5A524; --orange:#F5A524; --accent:#F5A524;
