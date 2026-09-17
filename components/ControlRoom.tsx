@@ -9,7 +9,7 @@ import { PRIMARY_CHANNEL } from "@/lib/channels";
 import { connectTwitchChat } from "@/lib/twitchChat";
 
 const WS_BASE = process.env.NEXT_PUBLIC_CHAT_WS_URL || "";
-type Tab = "onair" | "chat" | "guests" | "sources" | "scene" | "intro" | "sounds" | "audio" | "rundown";
+type Tab = "onair" | "chat" | "guests" | "sources" | "scene" | "intro" | "sounds" | "audio" | "rundown" | "media";
 type ChatMessage = { id: string; name: string; text: string; uid?: string; tip?: number; source?: "site" | "youtube" | "twitch" | "facebook" };
 
 // Small source badge (Site / YT / TW / FB) shown before a chat message.
@@ -155,6 +155,7 @@ export default function ControlRoom() {
   const bumperBgInput = useRef<HTMLInputElement | null>(null);
   const rundownInput = useRef<HTMLInputElement | null>(null);
   const rundownFileIdx = useRef<number>(-1); // which topic row an upload targets
+  const mediaInput = useRef<HTMLInputElement | null>(null);
 
   // Load the saved scene + sounds and apply them to the engine.
   useEffect(() => {
@@ -300,6 +301,12 @@ export default function ControlRoom() {
       const d = await res.json();
       setRundownMsg(d.saved ? "Rundown saved." : d.error || "Preview only - connect Firebase to save.");
     } catch { setRundownMsg("Could not save."); }
+  }
+
+  // ---- Media: roll a video/music file live ----
+  function pickMedia(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; e.target.value = "";
+    if (f) { broadcast.playMedia(f); force(); }
   }
 
   // ---- Intro / "starting soon" bumper ----
@@ -621,7 +628,7 @@ export default function ControlRoom() {
         {/* ---- Show controls ---- */}
         <div>
           <div className="filters" style={{ marginBottom: 16 }}>
-            {([["onair", "On air"], ["chat", "Chat"], ["guests", "Guests"], ["audio", "Audio"], ["scene", "Scene"], ["rundown", "Rundown"], ["intro", "Intro"], ["sounds", "Sounds"], ["sources", "Sources"]] as [Tab, string][]).map(([k, label]) => (
+            {([["onair", "On air"], ["chat", "Chat"], ["guests", "Guests"], ["audio", "Audio"], ["scene", "Scene"], ["rundown", "Rundown"], ["intro", "Intro"], ["sounds", "Sounds"], ["media", "Media"], ["sources", "Sources"]] as [Tab, string][]).map(([k, label]) => (
               <button key={k} className={`filter-btn${tab === k ? " active" : ""}`} type="button" onClick={() => setTab(k)}>{label}</button>
             ))}
           </div>
@@ -632,6 +639,14 @@ export default function ControlRoom() {
               <div className="panel-sub">These appear on the broadcast itself (burned into the video).</div>
               <div className="form-field"><label>Banner title</label><input type="text" value={title} placeholder="Sebastian Street Studios" onChange={(e) => setTitle(e.target.value)} /></div>
               <div className="form-field"><label>Subtitle (optional)</label><input type="text" value={subtitle} placeholder="Segment 2" onChange={(e) => setSubtitle(e.target.value)} /></div>
+              <div className="form-field">
+                <label>Name-tag style</label>
+                <div className="filters" style={{ margin: 0 }}>
+                  {([["bar", "Bar"], ["rounded", "Rounded"], ["pill", "Pill"]] as ["bar" | "rounded" | "pill", string][]).map(([k, label]) => (
+                    <button key={k} type="button" className={`filter-btn${broadcast.bannerStyle === k ? " active" : ""}`} onClick={() => { broadcast.setBannerStyle(k); force(); }}>{label}</button>
+                  ))}
+                </div>
+              </div>
               <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
                 <button className="btn btn-primary btn-sm" type="button" onClick={showBanner}>Show banner</button>
                 <button className="btn btn-ghost btn-sm" type="button" onClick={hideBanner}>Hide banner</button>
@@ -990,10 +1005,33 @@ export default function ControlRoom() {
             </div>
           )}
 
+          {tab === "media" && (
+            <div className="panel">
+              <input ref={mediaInput} type="file" accept="video/*,audio/*" hidden onChange={pickMedia} />
+              <h3>Media</h3>
+              <div className="panel-sub">Play a video or music file into your live broadcast. A video fills the screen while it plays; a music file plays over your current camera. Use the level slider to balance it against your mic.</div>
+              {!broadcast.mediaPlaying ? (
+                <button className="btn btn-primary btn-sm" type="button" onClick={() => mediaInput.current?.click()}>Choose file to play</button>
+              ) : (
+                <>
+                  <div className="dest-row">
+                    <div><div className="dest-name">Now playing</div><div className="dest-meta">{broadcast.mediaName}{broadcast.mediaHasVideo ? " - video" : " - audio"}</div></div>
+                    <button className="btn btn-ghost btn-sm" type="button" onClick={() => { broadcast.stopMedia(); force(); }}>Stop</button>
+                  </div>
+                  <div className="dest-row" style={{ marginTop: 6 }}>
+                    <div><div className="dest-name">Media level</div><div className="dest-meta">How loud the media is in the broadcast</div></div>
+                    <input type="range" min={0} max={1.5} step={0.05} value={broadcast.mediaLevel} onChange={(e) => { broadcast.setMediaLevel(Number(e.target.value)); force(); }} style={{ width: 150 }} />
+                  </div>
+                </>
+              )}
+              <p className="form-note" style={{ marginTop: 12 }}>The media audio goes out to your viewers (not your own speakers) to avoid mic echo - watch the Program preview to follow along. Playback starts right away; press Stop to return to the camera.</p>
+            </div>
+          )}
+
           {tab === "sounds" && (
             <div className="panel">
               <h3>Soundboard</h3>
-              <div className="panel-sub">Tap a pad to fire a sound effect. It goes out on the broadcast (viewers hear it) and in your monitor.</div>
+              <div className="panel-sub">Tap a pad to fire a sound effect. It goes out on the broadcast (viewers hear it) and in your monitor. You can add several pads.</div>
               <input ref={soundInput} type="file" accept="audio/*" hidden onChange={pickSound} />
 
               {sounds.length === 0 ? (

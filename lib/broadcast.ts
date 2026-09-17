@@ -130,6 +130,15 @@ class StudioEngine {
   // Neutral display name for the host tile (kept generic, not client-specific).
   hostName = "Host";
   banner: Banner = null; pinned: Pinned = null;
+  bannerStyle: "bar" | "rounded" | "pill" = "bar"; // lower-third name-tag shape
+  // Media: roll a video/music file into the live program with its own level.
+  private mediaEl: HTMLVideoElement | null = null;
+  private mediaSrc: MediaElementAudioSourceNode | null = null;
+  private mediaGain: GainNode | null = null;
+  mediaPlaying = false;
+  mediaHasVideo = false;
+  mediaName = "";
+  mediaLevel = 1;
   tipAlert: { name: string; amount: number; message: string } | null = null;
   private tipTimer: ReturnType<typeof setTimeout> | null = null;
   // Positions (top-left, canvas px) of the draggable on-air graphics.
@@ -353,6 +362,15 @@ class StudioEngine {
 
     // Intro/"starting soon" bumper replaces the whole program visually when on.
     if (this.bumperEnabled) { this.drawBumper(ctx); return; }
+
+    // A rolling media video fills the program while it plays (audio-only media
+    // just mixes over the current camera, so no video takeover in that case).
+    if (this.mediaPlaying && this.mediaHasVideo && this.mediaEl && this.mediaEl.videoWidth) {
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+      drawCover(ctx, this.mediaEl, 0, 0, W, H);
+      this.drawGraphics(ctx);
+      return;
+    }
 
     // Branded scene takes over the frame when enabled (host over a background).
     if (this.sceneEnabled) { this.drawScene(ctx); this.drawGraphics(ctx); return; }
@@ -653,23 +671,71 @@ class StudioEngine {
     }
     if (this.banner) {
       const { x, y } = this.bannerPos, ph = 56;
+      // Measure both blocks first so the chosen shape (bar/rounded/pill) can
+      // round the whole banner cleanly via a clip.
       ctx.font = "400 34px Anton, sans-serif";
       const tw = ctx.measureText(this.banner.title.toUpperCase()).width + 44;
+      let sw = 0;
+      if (this.banner.subtitle) { ctx.font = "500 18px Inter, sans-serif"; sw = ctx.measureText(this.banner.subtitle).width + 40; }
+      const total = tw + sw;
+      const r = this.bannerStyle === "pill" ? ph / 2 : this.bannerStyle === "rounded" ? 12 : 0;
+      // Colored blocks inside a rounded clip.
+      ctx.save();
+      roundRectPath(ctx, x, y, total, ph, r); ctx.clip();
       ctx.fillStyle = this.brandAccent; ctx.fillRect(x, y, tw, ph);
-      ctx.fillStyle = "#151107"; ctx.fillText(this.banner.title.toUpperCase(), x + 22, y + ph / 2 + 2);
-      let total = tw;
-      if (this.banner.subtitle) {
-        ctx.font = "500 18px Inter, sans-serif";
-        const sw = ctx.measureText(this.banner.subtitle).width + 40;
-        ctx.fillStyle = "rgba(10,9,8,.9)"; ctx.fillRect(x + tw, y, sw, ph);
-        ctx.fillStyle = "#F3EFE7"; ctx.fillText(this.banner.subtitle, x + tw + 20, y + ph / 2 + 1);
-        total += sw;
-      }
+      if (sw) { ctx.fillStyle = "rgba(10,9,8,.9)"; ctx.fillRect(x + tw, y, sw, ph); }
+      ctx.restore();
+      // Text on top.
+      ctx.fillStyle = "#151107"; ctx.font = "400 34px Anton, sans-serif";
+      ctx.fillText(this.banner.title.toUpperCase(), x + 22, y + ph / 2 + 2);
+      if (sw) { ctx.fillStyle = "#F3EFE7"; ctx.font = "500 18px Inter, sans-serif"; ctx.fillText(this.banner.subtitle, x + tw + 20, y + ph / 2 + 1); }
       this.bannerRect = { x, y, w: total, h: ph };
     }
   }
 
   setBanner(title: string, subtitle: string) { this.banner = title.trim() ? { title, subtitle } : null; this.emit(); }
+  setBannerStyle(s: "bar" | "rounded" | "pill") { this.bannerStyle = s; this.emit(); }
+
+  // ---- Media: play a video/music file live ----
+  // Plays a picked file into the program. A video fills the screen while it
+  // runs; an audio-only file mixes over the current camera. Audio goes to the
+  // broadcast (not the host's speakers) to avoid mic feedback - use the level
+  // slider and watch the Program preview.
+  playMedia(file: File) {
+    this.stopMedia();
+    if (!this.audioCtx || !this.audioDest) return;
+    const url = URL.createObjectURL(file);
+    const el = document.createElement("video");
+    el.src = url; el.playsInline = true; el.muted = false;
+    (el as any)._objUrl = url;
+    el.onloadedmetadata = () => { this.mediaHasVideo = el.videoWidth > 0; this.emit(); };
+    el.onended = () => this.stopMedia();
+    this.mediaEl = el;
+    this.mediaName = file.name;
+    try {
+      this.mediaSrc = this.audioCtx.createMediaElementSource(el);
+      this.mediaGain = this.audioCtx.createGain();
+      this.mediaGain.gain.value = this.mediaLevel;
+      this.mediaSrc.connect(this.mediaGain);
+      this.mediaGain.connect(this.audioDest); // out to the broadcast
+    } catch { this.mediaSrc = null; this.mediaGain = null; }
+    this.audioCtx.resume().catch(() => {});
+    el.play().catch(() => {});
+    this.mediaPlaying = true;
+    this.emit();
+  }
+  setMediaLevel(v: number) { this.mediaLevel = v; if (this.mediaGain) this.mediaGain.gain.value = v; this.emit(); }
+  stopMedia() {
+    if (this.mediaGain) { try { this.mediaGain.disconnect(); } catch {} this.mediaGain = null; }
+    if (this.mediaSrc) { try { this.mediaSrc.disconnect(); } catch {} this.mediaSrc = null; }
+    if (this.mediaEl) {
+      try { this.mediaEl.pause(); } catch {}
+      const u = (this.mediaEl as any)._objUrl; if (u) { try { URL.revokeObjectURL(u); } catch {} }
+      this.mediaEl.src = ""; this.mediaEl = null;
+    }
+    this.mediaPlaying = false; this.mediaHasVideo = false; this.mediaName = "";
+    this.emit();
+  }
   hideBanner() { this.banner = null; this.emit(); }
   setPinned(name: string, text: string) { this.pinned = { name, text }; this.emit(); }
   clearPinned() { this.pinned = null; this.emit(); }
