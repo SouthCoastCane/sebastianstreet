@@ -246,7 +246,7 @@ export default function AdminSettings() {
           <div className="panel">
             <h3>Account</h3>
             <div className="panel-sub">Your Studio sign-in.</div>
-            <div className="form-field"><label>Email</label><input type="email" defaultValue="creator@sebastianstreetstudios.com" /></div>
+            <div className="form-field"><label>Email</label><input type="email" defaultValue="southcoastcane@gmail.com" /></div>
             <button className="btn btn-ghost btn-sm" type="button">Change password</button>
           </div>
         </div>

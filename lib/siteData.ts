@@ -19,8 +19,8 @@ export const BRAND = {
   host: "Sebastian Street Studios",
   domain: "sebastianstreetstudios.com",
   accent: "#F5A524",
-  emailGeneral: "hello@sebastianstreetstudios.com",
-  emailBooking: "booking@sebastianstreetstudios.com",
+  emailGeneral: "southcoastcane@gmail.com",
+  emailBooking: "southcoastcane@gmail.com",
 };
 
 export const HERO = {
