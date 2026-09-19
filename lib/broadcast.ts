@@ -97,6 +97,8 @@ class StudioEngine {
   autoClearChat = true; // reset the live chat automatically on Go Live (host pref)
   cameraOn = true; // host camera live (off actually releases the device - light off)
   micOn = true; // host microphone live
+  micEnhance = true; // browser noise/echo/gain cleanup + studio-voice compressor
+  private voiceComp: DynamicsCompressorNode | null = null;
   // Branded scene (background behind host + optional green-screen + frame/logo)
   sceneEnabled = false;
   sceneMode: "none" | "chroma" | "ml" = "chroma";
@@ -234,7 +236,7 @@ class StudioEngine {
     try {
       const next = await navigator.mediaDevices.getUserMedia({
         video: this.camId ? { deviceId: { exact: this.camId } } : true,
-        audio: this.micId ? { deviceId: { exact: this.micId } } : true,
+        audio: this.micConstraints(),
       });
       if (this.pc && this.live) {
         const senders = this.pc.getSenders();
@@ -252,7 +254,7 @@ class StudioEngine {
         if (next.getAudioTracks().length) {
           this.hostAudioSrc = this.audioCtx.createMediaStreamSource(next);
           if (!this.hostGain) { this.hostGain = this.audioCtx.createGain(); this.hostGain.gain.value = this.hostLevel; this.hostGain.connect(this.audioDest); }
-          this.hostAudioSrc.connect(this.hostGain);
+          this.connectHostChain();
           this.attachAnalyser("host", this.hostAudioSrc);
         }
       }
@@ -296,7 +298,7 @@ class StudioEngine {
       return;
     }
     try {
-      const mic = await navigator.mediaDevices.getUserMedia({ audio: this.micId ? { deviceId: { exact: this.micId } } : true });
+      const mic = await navigator.mediaDevices.getUserMedia({ audio: this.micConstraints() });
       const track = mic.getAudioTracks()[0];
       if (track && this.hostStream) {
         this.hostStream.addTrack(track);
@@ -306,12 +308,48 @@ class StudioEngine {
           this.analysers.delete("host");
           this.hostAudioSrc = this.audioCtx.createMediaStreamSource(new MediaStream([track]));
           if (!this.hostGain) { this.hostGain = this.audioCtx.createGain(); this.hostGain.gain.value = this.hostLevel; this.hostGain.connect(this.audioDest); }
-          this.hostAudioSrc.connect(this.hostGain);
+          this.connectHostChain();
           this.attachAnalyser("host", this.hostAudioSrc);
         }
       }
       this.error = ""; this.emit();
     } catch { this.error = "Microphone access is required."; this.micOn = false; this.emit(); }
+  }
+
+  // Mic capture constraints. With enhancement on, ask the browser for its native
+  // noise suppression, echo cancellation and auto gain (great for a talker in a
+  // room); off gives the raw device (better for a pro mic/interface).
+  private micConstraints(): MediaTrackConstraints | boolean {
+    const c: MediaTrackConstraints = {};
+    if (this.micId) c.deviceId = { exact: this.micId };
+    if (this.micEnhance) { c.noiseSuppression = true; c.echoCancellation = true; c.autoGainControl = true; }
+    return this.micId || this.micEnhance ? c : true;
+  }
+
+  // Wire the host mic into the mix, optionally through a gentle "studio voice"
+  // compressor (evens out loud/quiet moments) when enhancement is on.
+  private connectHostChain() {
+    if (!this.audioCtx || !this.hostAudioSrc || !this.hostGain) return;
+    try { this.hostAudioSrc.disconnect(); } catch {}
+    try { this.voiceComp?.disconnect(); } catch {}
+    if (this.micEnhance) {
+      if (!this.voiceComp) {
+        const c = this.audioCtx.createDynamicsCompressor();
+        c.threshold.value = -24; c.knee.value = 30; c.ratio.value = 3; c.attack.value = 0.003; c.release.value = 0.25;
+        this.voiceComp = c;
+      }
+      this.hostAudioSrc.connect(this.voiceComp);
+      this.voiceComp.connect(this.hostGain);
+    } else {
+      this.hostAudioSrc.connect(this.hostGain);
+    }
+  }
+
+  // Toggle mic enhancement. Re-acquires the mic so the browser constraints apply.
+  async setMicEnhance(on: boolean) {
+    this.micEnhance = on;
+    this.emit();
+    await this.ensureCamera();
   }
 
   // The brand logo to show on the "Camera off" card (from branding config).

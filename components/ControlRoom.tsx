@@ -309,6 +309,22 @@ export default function ControlRoom() {
     if (f) { broadcast.playMedia(f); force(); }
   }
 
+  // ---- Scenes: one-tap program looks (bound to keys 1-4) ----
+  function applyScene(key: "camera" | "spotlight" | "studio" | "intro") {
+    if (key === "intro") { updateBumper({ enabled: true }); force(); return; }
+    if (broadcast.bumperEnabled) updateBumper({ enabled: false });
+    if (broadcast.mediaPlaying) broadcast.stopMedia();
+    if (key === "studio") { broadcast.setSceneEnabled(true); broadcast.setLayout("grid"); }
+    else { broadcast.setSceneEnabled(false); broadcast.setLayout(key === "spotlight" ? "spotlight" : "grid"); }
+    force();
+  }
+  // Which scene is currently showing (for the active button state).
+  function activeScene(): string {
+    if (broadcast.bumperEnabled) return "intro";
+    if (broadcast.sceneEnabled) return "studio";
+    return broadcast.layout === "spotlight" ? "spotlight" : "camera";
+  }
+
   // ---- Intro / "starting soon" bumper ----
   function updateBumper(patch: Partial<BumperCfg>) {
     setBumper((b) => { const next = { ...b, ...patch }; broadcast.setBumper(next); return next; });
@@ -346,6 +362,28 @@ export default function ControlRoom() {
   }
 
   useEffect(() => broadcast.subscribe(force), []);
+
+  // Keyboard shortcuts for live control (ignored while typing in a field).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      switch (e.key) {
+        case "1": applyScene("camera"); break;
+        case "2": applyScene("spotlight"); break;
+        case "3": applyScene("studio"); break;
+        case "4": applyScene("intro"); break;
+        case "m": case "M": broadcast.setMicOn(!broadcast.micOn); force(); break;
+        case "c": case "C": broadcast.setCameraOn(!broadcast.cameraOn); force(); break;
+        case "b": case "B": if (broadcast.banner) hideBanner(); else showBanner(); break;
+        default: return;
+      }
+      e.preventDefault();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [title, subtitle]);
 
   // Start the engine and mount its composited canvas as the program preview.
   useEffect(() => {
@@ -561,6 +599,17 @@ export default function ControlRoom() {
               <button className="btn btn-ghost btn-sm" type="button" onClick={() => broadcast.startRecording()}>Record locally</button>
             )}
             <button className="btn btn-ghost btn-sm" type="button" onClick={() => setPip(true)}>Open live page</button>
+          </div>
+
+          {/* One-tap program "scenes" (also keys 1-4). Studio = branded scene. */}
+          <div style={{ marginTop: 12 }}>
+            <span className="dest-meta" style={{ display: "block", marginBottom: 6 }}>Scenes <span style={{ opacity: .7 }}>(press 1-4)</span></span>
+            <div className="filters" style={{ margin: 0 }}>
+              {([["camera", "1 · Camera"], ["spotlight", "2 · Spotlight"], ["studio", "3 · Studio"], ["intro", "4 · Intro"]] as ["camera" | "spotlight" | "studio" | "intro", string][]).map(([k, label]) => (
+                <button key={k} type="button" className={`filter-btn${activeScene() === k ? " active" : ""}`} onClick={() => applyScene(k)}>{label}</button>
+              ))}
+            </div>
+            <p className="form-note" style={{ marginTop: 6 }}>Shortcuts: <strong>1-4</strong> scenes · <strong>M</strong> mute mic · <strong>C</strong> camera · <strong>B</strong> banner. (Ignored while typing.)</p>
           </div>
 
           {/* Camera zoom. If the webcam exposes a real lens zoom, use it (this
@@ -791,6 +840,13 @@ export default function ControlRoom() {
                 </div>
                 <input type="range" min={0} max={1.5} step={0.05} value={broadcast.hostLevel} onChange={(e) => { broadcast.setHostLevel(Number(e.target.value)); force(); }} style={{ width: 150 }} />
                 <span className="dest-meta" style={{ width: 42, textAlign: "right" }}>{Math.round(broadcast.hostLevel * 100)}%</span>
+              </div>
+              <div className="dest-row" style={{ alignItems: "center" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="dest-name">Enhance mic</div>
+                  <div className="dest-meta">Noise + echo removal, auto-gain, and a gentle voice compressor. Turn off if you use a pro mic/interface.</div>
+                </div>
+                <label className="toggle"><input type="checkbox" checked={broadcast.micEnhance} onChange={(e) => { broadcast.setMicEnhance(e.target.checked); force(); }} /><span className="track" /></label>
               </div>
               {(() => {
                 const guests = broadcast.roster.filter((p) => p.sessionId && broadcast.admitted.has(p.sessionId) && p.hasAudio);
