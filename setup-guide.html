@@ -3,108 +3,147 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Studio — Setup &amp; Testing Guide</title>
+<title>Client Handoff — UAT &amp; Go-Live Checklist</title>
 <style>
   :root{
     --bg:#072801; --panel:#0e3b06; --panel2:#0b3204; --line:rgba(243,239,231,.16);
-    --text:#F3EFE7; --mute:#bfc4c0; --accent:#ff9b29; --live:#ecba04;
+    --text:#F3EFE7; --mute:#bfc4c0; --accent:#ff9b29; --live:#ecba04; --ok:#6FBF73;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:40px 20px}
-  .wrap{max-width:820px;margin:0 auto}
-  h1{font-size:30px;margin:0 0 4px}
-  .sub{color:var(--mute);margin:0 0 28px}
-  h2{font-size:20px;margin:0 0 14px;display:flex;align-items:center;gap:10px}
-  h2 .n{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--accent);color:#151107;font-size:15px;font-weight:800;flex:0 0 auto}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:20px}
-  .step{border-left:3px solid var(--accent);padding:2px 0 2px 16px;margin:16px 0}
-  .step b{color:var(--text)}
-  .path{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:1px 8px;font-size:14px;color:var(--accent);font-weight:600}
-  code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:14px}
-  ul{margin:8px 0 0;padding-left:0;list-style:none}
-  li{padding:8px 0 8px 30px;position:relative;border-bottom:1px solid var(--line)}
-  li:last-child{border-bottom:none}
-  li::before{content:"";position:absolute;left:0;top:12px;width:16px;height:16px;border:2px solid var(--mute);border-radius:4px}
-  li b{color:var(--text)}
-  .note{color:var(--mute);font-size:14px;margin-top:10px}
-  .pill{display:inline-block;background:var(--accent);color:#151107;font-weight:700;font-size:12px;padding:2px 10px;border-radius:999px}
-  .live{background:var(--live)}
-  .tip{background:rgba(255,155,41,.10);border:1px solid rgba(255,155,41,.35);border-radius:10px;padding:12px 14px;font-size:14.5px;margin-top:14px}
-  footer{color:var(--mute);font-size:13px;margin-top:30px;text-align:center}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:32px 18px 80px}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:28px;margin:0 0 4px}
+  .sub{color:var(--mute);margin:0 0 20px}
+  .bar-wrap{position:sticky;top:0;z-index:10;background:var(--bg);padding:12px 0 14px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+  .bar-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+  .bar-count{font-weight:700}
+  .bar-count b{color:var(--accent);font-size:20px}
+  .track{height:10px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--live));transition:width .25s}
+  .btns{display:flex;gap:8px}
+  button{font:inherit;font-size:13px;font-weight:600;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:18px}
+  h2{font-size:19px;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+  h2 .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:8px;background:var(--accent);color:#151107;font-size:14px;font-weight:800;flex:0 0 auto}
+  h2 .cnt{margin-left:auto;font-size:13px;color:var(--mute);font-weight:600}
+  .cardsub{color:var(--mute);font-size:14px;margin:0 0 12px}
+  label.item{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line);cursor:pointer;-webkit-user-select:none;user-select:none}
+  label.item:last-child{border-bottom:none}
+  label.item input{appearance:none;-webkit-appearance:none;flex:0 0 auto;width:22px;height:22px;margin-top:1px;border:2px solid var(--mute);border-radius:6px;position:relative;cursor:pointer;transition:.12s}
+  label.item input:checked{background:var(--ok);border-color:var(--ok)}
+  label.item input:checked::after{content:"";position:absolute;left:6px;top:2px;width:6px;height:11px;border:solid #06230a;border-width:0 3px 3px 0;transform:rotate(45deg)}
+  label.item input:checked ~ .txt{color:var(--mute);text-decoration:line-through;text-decoration-color:rgba(191,196,192,.5)}
+  .txt b{color:var(--text)}
+  .txt .path{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:0 7px;font-size:13.5px;color:var(--accent);font-weight:600}
+  .txt small{display:block;color:var(--mute);font-size:13px;margin-top:2px}
+  .req{font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:999px;background:var(--accent);color:#151107;margin-left:6px;text-transform:uppercase}
+  .opt{background:transparent;color:var(--mute);border:1px solid var(--line)}
+  .tip{background:rgba(255,155,41,.10);border:1px solid rgba(255,155,41,.35);border-radius:10px;padding:12px 14px;font-size:14px;margin-top:6px}
+  .done h2 .n{background:var(--ok);color:#06230a}
+  footer{color:var(--mute);font-size:13px;margin-top:26px;text-align:center}
+  @media print{ .bar-wrap,.btns{position:static} button{display:none} body{background:#fff;color:#000} .card{border-color:#ccc;background:#fff} }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Studio — Setup &amp; Testing Guide</h1>
-  <p class="sub">Do the one-time setup first — it unlocks the live embed, the Videos list, and merged chat. Then run through the checklist.</p>
+  <h1>Client Handoff — UAT &amp; Go-Live Checklist</h1>
+  <p class="sub">Fast acceptance pass (one yes/no per capability) + what the client needs to own the site. Your progress saves automatically on this device.</p>
 
-  <div class="card">
-    <h2><span class="n">1</span> One-time setup (unlocks several features)</h2>
-
-    <div class="step">
-      <b>Set your YouTube channel.</b><br>
-      Go to <span class="path">Settings → YouTube channel</span> and paste your <b>Channel ID</b> (it starts with <code>UC…</code>).<br>
-      <span class="note">Find it in YouTube Studio → Settings → Channel → Advanced settings. This feeds the live player embed, the Videos list, and the merged YouTube chat.</span>
+  <div class="bar-wrap">
+    <div class="bar-top">
+      <div class="bar-count"><b id="pctDone">0</b> of <span id="pctTotal">0</span> done</div>
+      <div class="btns">
+        <button type="button" onclick="window.print()">Print / PDF</button>
+        <button type="button" onclick="resetAll()">Reset</button>
+      </div>
     </div>
-
-    <div class="step">
-      <b>Set your Twitch channel (optional).</b><br>
-      Go to <span class="path">Settings → Merged live chat</span> and enter your <b>Twitch username</b> (only if you stream to Twitch too).
-    </div>
-
-    <div class="tip"><b>Tip:</b> after saving, hard-refresh the page — <b>Ctrl+Shift+R</b> (Windows) or <b>Cmd+Shift+R</b> (Mac) — so the latest version loads.</div>
+    <div class="track"><div class="fill" id="fill"></div></div>
   </div>
 
+  <!-- 0 -->
   <div class="card">
-    <h2><span class="n">2</span> Live production (Go Live tab)</h2>
-    <p class="note" style="margin-top:0">Test these while actually broadcasting, camera on.</p>
-    <ul>
-      <li><b>YouTube output</b> — Go Live and confirm YouTube receives the video.</li>
-      <li><b>Scenes + transitions</b> — press <b>1/2/3/4</b> (or the Scene buttons) to switch Camera / Spotlight / Studio / Intro; toggle <b>Cut</b> vs <b>Fade</b>.</li>
-      <li><b>Hotkeys</b> — <b>M</b> mic, <b>C</b> camera, <b>B</b> banner, <b>1–4</b> scenes (ignored while typing).</li>
-      <li><b>Banner styles</b> — On Air tab: Bar / Rounded / Pill; Show banner; drag it on the preview.</li>
-      <li><b>Enhance mic</b> — Audio tab: toggle on/off; confirm audio still works after.</li>
-      <li><b>Multi-camera switch</b> — with 2+ cameras, use the Quick camera switch buttons.</li>
-      <li><b>Media playback</b> — Media tab: play a video (fills screen) and a music file (over camera); use the level slider; Stop returns to camera.</li>
-      <li><b>Custom layout</b> — layout <b>Custom</b>: drag a camera tile to move, scroll over it to resize. Grid/Spotlight still work normally.</li>
-      <li><b>Rundown</b> — add topics/images, set a <b>Length</b> to test the countdown, let it pass 0 for overtime (+m:ss) in red.</li>
-    </ul>
+    <h2><span class="n">0</span> Start here <span class="cnt"></span></h2>
+    <p class="cardsub">Two minutes before you demo.</p>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Open the live Studio</b> and hard-refresh <small>Ctrl+Shift+R (Win) / Cmd+Shift+R (Mac) so the newest version loads.</small></span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Sign in to Studio</b> works with the client's email/password</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Set the YouTube Channel ID</b> <span class="path">Settings → YouTube channel</span><small>Starts with UC… — unlocks the live embed, Videos, and merged chat.</small></span></label>
   </div>
 
+  <!-- 1 -->
   <div class="card">
-    <h2><span class="n">3</span> Recording &amp; clips <span class="pill">isolated from live</span></h2>
-    <ul>
-      <li><b>Instant replay</b> — Media tab → Start replay buffer, wait ~40s, then Replay last ~30s (on-air) and Save clip (.webm). <i>Test this hardest.</i></li>
-      <li><b>Vertical recording (Shorts)</b> — Media tab → Start, then Stop &amp; save; confirm a 9:16 file centered on you.</li>
-      <li><b>Record locally</b> — still works as before.</li>
-    </ul>
-    <p class="note">Replay &amp; vertical use extra CPU while on — start them only when needed. They run separately from the live stream, so they can never affect broadcast quality.</p>
+    <h2><span class="n">1</span> Does it work? — fast acceptance <span class="cnt"></span></h2>
+    <p class="cardsub">Each line is a single yes/no. Don't over-test — confirm the capability and move on.</p>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Go Live</b> — click Go Live, the Program shows your camera and status flips to On air</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Reaches YouTube</b> — "Watch on YouTube" shows the stream playing <small>The core promise: browser to YouTube, no OBS.</small></span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>On-air graphics</b> — a banner and the Rundown rail show on the broadcast</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Scenes + hotkeys</b> — press 1–4 to switch looks; M/C/B toggle mic/camera/banner</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Merged chat</b> — a YouTube comment appears in the Studio &amp; site chat with a YT badge</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Media / sounds</b> — play a video or music file into the live show</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>End broadcast</b> — Stop broadcast ends cleanly (status back to Off air)</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Public site</b> — Home, /live, Shows, Archive all load and look on-brand</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Videos</b> — the Videos page lists the channel's uploads</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Tips</b> — send a small test tip; it appears under Tips (then use "Clear test data")</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Branding</b> — change a color, Save, refresh; it applies site-wide (no brown)</span></label>
   </div>
 
+  <!-- 2 -->
   <div class="card">
-    <h2><span class="n">4</span> Merged chat</h2>
-    <ul>
-      <li>With the channel/Twitch set and <b>live</b>, confirm YouTube (and Twitch) messages appear in the site <code>/live</code> chat and the Studio, each with a <b>badge</b> — <span class="pill">Site</span> <span class="pill">YT</span> <span class="pill">TW</span>.</li>
-    </ul>
+    <h2><span class="n">2</span> Client ownership — accounts &amp; keys <span class="cnt"></span></h2>
+    <p class="cardsub">What the client must own so the site is truly theirs. <span class="req">Required</span> = needed to be live.</p>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Vercel</b> <span class="req">Required</span><small>Hosts the website. Repo connected, deploys on push, billing set.</small></span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Cloudflare</b> <span class="req">Required</span><small>Stream (live video + recordings) and the chat Worker. Own account + keys.</small></span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Firebase</b> <span class="req">Required</span><small>Admin sign-in, content, users. Client's project + keys.</small></span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>GitHub</b> <span class="req">Required</span><small>Code repo; triggers Vercel deploys. Transferred / shared to client.</small></span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Fly.io</b> <span class="req">Required</span><small>Simulcast relay (browser → YouTube). Client account + relay deployed + billing.</small></span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Stripe</b> <span class="req opt">If taking tips</span><small>Payments/tips. Client's keys + webhook.</small></span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Resend</b> <span class="req opt">Optional</span><small>Contact-form emails. One API key.</small></span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>All keys switched to the client</b> <span class="req">Required</span><small>No developer/test keys left in the deployment.</small></span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Domain pointed</b> — Sebastianstreetstudios.com added in Vercel + GoDaddy DNS set <span class="req">Required</span></span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Admin account is the client's</b> — client email is owner; login + password reset tested <span class="req">Required</span></span></label>
   </div>
 
+  <!-- 3 -->
   <div class="card">
-    <h2><span class="n">5</span> Branding &amp; colors</h2>
-    <ul>
-      <li>Change <b>Accent / Background / Live</b> in Branding and Save; hard-refresh. Confirm no brown anywhere — panels, sidebar, text/menu, home hero, and the solid <span class="pill live">LIVE</span> badge all follow your colors. Try a light background too (text should flip dark).</li>
-    </ul>
+    <h2><span class="n">3</span> Nice-to-have / advanced (skip if short on time) <span class="cnt"></span></h2>
+    <p class="cardsub">Newer extras — confirm only if there's time.</p>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Instant replay</b> — Media tab: Start buffer, wait ~40s, Replay / Save clip</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Vertical recording</b> — Media tab: records a 9:16 clip for Shorts</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Custom layout</b> — drag/scroll camera tiles to reposition</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Multi-camera switch</b> — quick-switch between cameras</span></label>
+    <label class="item"><input type="checkbox"><span class="txt"><b>Twitch chat</b> — set Twitch username; messages merge with a TW badge</span></label>
   </div>
 
-  <div class="card">
-    <h2><span class="n">6</span> Admin &amp; data</h2>
-    <ul>
-      <li><b>Videos</b> — after setting your channel, confirm it lists all your uploads (not just a few).</li>
-      <li><b>Tips → Clear test data</b> (owner) — wipes test tips; totals reset. Stripe is unaffected.</li>
-      <li><b>Sources tab</b> — confirm the two-part setup note is clear (stream key = video out; Settings = chat in).</li>
-    </ul>
-  </div>
+  <div class="tip"><b>Meeting flow (2 hrs):</b> Section 0 setup (10 min) → Section 1 fast acceptance, do it live together (35 min) → Section 2 ownership handoff, log into each account and confirm keys/billing (60 min) → Section 3 only if time (15 min).</div>
 
-  <footer>Keep this file for handoff. Report anything that misbehaves.</footer>
+  <footer>Progress is saved on this browser. Print to PDF to share the signed-off result.</footer>
 </div>
+
+<script>
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox]'));
+  var KEY = 'handoff-uat-v1';
+  function load(){
+    try{ var s = JSON.parse(localStorage.getItem(KEY) || '[]');
+      boxes.forEach(function(b,i){ b.checked = !!s[i]; });
+    }catch(e){}
+  }
+  function save(){ localStorage.setItem(KEY, JSON.stringify(boxes.map(function(b){return b.checked?1:0;}))); }
+  function refresh(){
+    var done = boxes.filter(function(b){return b.checked;}).length;
+    document.getElementById('pctDone').textContent = done;
+    document.getElementById('pctTotal').textContent = boxes.length;
+    document.getElementById('fill').style.width = (boxes.length? Math.round(done/boxes.length*100):0) + '%';
+    document.querySelectorAll('.card').forEach(function(card){
+      var cbs = card.querySelectorAll('input[type=checkbox]');
+      if(!cbs.length) return;
+      var d = Array.prototype.filter.call(cbs,function(b){return b.checked;}).length;
+      var cnt = card.querySelector('.cnt'); if(cnt) cnt.textContent = d + ' / ' + cbs.length;
+      card.classList.toggle('done', d===cbs.length);
+    });
+  }
+  boxes.forEach(function(b){ b.addEventListener('change', function(){ save(); refresh(); }); });
+  function resetAll(){ if(confirm('Clear all checkmarks?')){ boxes.forEach(function(b){b.checked=false;}); save(); refresh(); } }
+  load(); refresh();
+</script>
 </body>
 </html>
