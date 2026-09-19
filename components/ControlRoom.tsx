@@ -373,7 +373,7 @@ export default function ControlRoom() {
 
   useEffect(() => broadcast.subscribe(force), []);
   useEffect(() => { if (!activeCam && cams[0]) setActiveCam(cams[0].deviceId); }, [cams, activeCam]);
-  useEffect(() => () => broadcast.stopReplayBuffer(), []); // free recorders when leaving the studio
+  useEffect(() => () => { broadcast.stopReplayBuffer(); broadcast.stopVerticalRecording(); }, []); // free recorders when leaving the studio
 
   // Keyboard shortcuts for live control (ignored while typing in a field).
   useEffect(() => {
@@ -411,8 +411,9 @@ export default function ControlRoom() {
       stageRef.current.appendChild(el);
     }
 
-    // Drag the pinned comment, banner, or PIP camera around with a grab cursor.
-    let drag: null | "pin" | "banner" | "pip" = null, ox = 0, oy = 0;
+    // Drag the pinned comment, banner, PIP camera, or (in custom layout) a
+    // camera tile around. Scroll over a tile in custom layout to resize it.
+    let drag: null | "pin" | "banner" | "pip" | "tile" = null, ox = 0, oy = 0, dragKey = "";
     const toCanvas = (e: PointerEvent) => {
       const r = el!.getBoundingClientRect();
       return { x: (e.clientX - r.left) * (broadcast.width / r.width), y: (e.clientY - r.top) * (broadcast.height / r.height) };
@@ -423,6 +424,7 @@ export default function ControlRoom() {
       if (broadcast.hitPin(p.x, p.y)) { drag = "pin"; const b = broadcast.pinBox(); ox = p.x - b.x; oy = p.y - b.y; }
       else if (broadcast.hitBanner(p.x, p.y)) { drag = "banner"; const b = broadcast.bannerBox(); ox = p.x - b.x; oy = p.y - b.y; }
       else if (broadcast.hitPip(p.x, p.y)) { drag = "pip"; const b = broadcast.pipBox(); ox = p.x - b.x; oy = p.y - b.y; }
+      else { const k = broadcast.hitTile(p.x, p.y); if (k) { drag = "tile"; dragKey = k; const b = broadcast.tileBox(k); ox = p.x - b.x; oy = p.y - b.y; } }
       if (drag) { el.style.cursor = "grabbing"; el.setPointerCapture?.(e.pointerId); e.preventDefault(); }
     };
     const onMove = (e: PointerEvent) => {
@@ -431,17 +433,29 @@ export default function ControlRoom() {
       if (drag === "pin") broadcast.setPinPos(p.x - ox, p.y - oy);
       else if (drag === "banner") broadcast.setBannerPos(p.x - ox, p.y - oy);
       else if (drag === "pip") broadcast.setPipPos(p.x - ox, p.y - oy);
-      else el.style.cursor = broadcast.hitPin(p.x, p.y) || broadcast.hitBanner(p.x, p.y) || broadcast.hitPip(p.x, p.y) ? "grab" : "default";
+      else if (drag === "tile") broadcast.setTilePos(dragKey, p.x - ox, p.y - oy);
+      else el.style.cursor = broadcast.hitPin(p.x, p.y) || broadcast.hitBanner(p.x, p.y) || broadcast.hitPip(p.x, p.y) || broadcast.hitTile(p.x, p.y) ? "grab" : "default";
     };
-    const onUp = () => { if (drag) { drag = null; if (el) el.style.cursor = "grab"; } };
+    const onUp = () => { if (drag) { drag = null; dragKey = ""; if (el) el.style.cursor = "grab"; } };
+    // Scroll to resize a tile in custom layout.
+    const onWheel = (e: WheelEvent) => {
+      if (!el || broadcast.layout !== "custom") return;
+      const p = toCanvas(e as unknown as PointerEvent);
+      const k = broadcast.hitTile(p.x, p.y);
+      if (!k) return;
+      e.preventDefault();
+      broadcast.resizeTile(k, e.deltaY < 0 ? 1.06 : 0.94);
+    };
     el?.addEventListener("pointerdown", onDown);
     el?.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    el?.addEventListener("wheel", onWheel, { passive: false });
 
     return () => {
       el?.removeEventListener("pointerdown", onDown);
       el?.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      el?.removeEventListener("wheel", onWheel);
       if (el && el.parentElement) el.parentElement.removeChild(el);
     };
   }, []);
@@ -604,8 +618,9 @@ export default function ControlRoom() {
               </div>
             ) : (
               <div className="filters" style={{ margin: 0 }}>
-                <button className={`filter-btn${broadcast.layout === "grid" ? " active" : ""}`} type="button" onClick={() => { broadcast.beginTransition(); broadcast.setLayout("grid"); }}>Grid</button>
-                <button className={`filter-btn${broadcast.layout === "spotlight" ? " active" : ""}`} type="button" onClick={() => { broadcast.beginTransition(); broadcast.setLayout("spotlight"); }}>Spotlight</button>
+                <button className={`filter-btn${broadcast.layout === "grid" ? " active" : ""}`} type="button" onClick={() => { broadcast.beginTransition(); broadcast.setLayout("grid"); force(); }}>Grid</button>
+                <button className={`filter-btn${broadcast.layout === "spotlight" ? " active" : ""}`} type="button" onClick={() => { broadcast.beginTransition(); broadcast.setLayout("spotlight"); force(); }}>Spotlight</button>
+                <button className={`filter-btn${broadcast.layout === "custom" ? " active" : ""}`} type="button" onClick={() => { broadcast.beginTransition(); broadcast.setLayout("custom"); force(); }}>Custom</button>
               </div>
             )}
             <button className={`btn btn-sm ${broadcast.cameraOn ? "btn-ghost" : "btn-danger"}`} type="button" onClick={() => broadcast.setCameraOn(!broadcast.cameraOn)}>{broadcast.cameraOn ? "Camera on" : "Camera off"}</button>
@@ -638,6 +653,9 @@ export default function ControlRoom() {
               ))}
             </div>
             <p className="form-note" style={{ marginTop: 6 }}>Shortcuts: <strong>1-4</strong> scenes · <strong>M</strong> mute mic · <strong>C</strong> camera · <strong>B</strong> banner. (Ignored while typing.)</p>
+            {broadcast.layout === "custom" && (
+              <p className="form-note" style={{ marginTop: 6 }}><strong>Custom layout:</strong> drag any camera tile on the preview to move it; scroll over a tile to resize it.</p>
+            )}
           </div>
 
           {/* Camera zoom. If the webcam exposes a real lens zoom, use it (this
@@ -1124,6 +1142,17 @@ export default function ControlRoom() {
                   </div>
                 )}
                 <p className="form-note" style={{ marginTop: 10 }}>Replay runs separately from your live stream, so it can&apos;t affect broadcast quality. It uses extra CPU while on - start it when you need it. Clip length lands around 20-40s.</p>
+              </div>
+
+              <div style={{ marginTop: 20, borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+                <h3 style={{ marginTop: 0 }}>Vertical recording (Shorts)</h3>
+                <div className="panel-sub">Records a 9:16 vertical version of your program (center-cropped) to a file - ready for Shorts, TikTok, and Reels. Runs separately from the live stream.</div>
+                {!broadcast.verticalRecording ? (
+                  <button className="btn btn-primary btn-sm" type="button" onClick={() => { broadcast.startVerticalRecording(); force(); }}>Start vertical recording</button>
+                ) : (
+                  <button className="btn btn-ghost btn-sm" type="button" onClick={() => { broadcast.stopVerticalRecording(); force(); }}><span className="rec-dot" />Stop &amp; save vertical</button>
+                )}
+                <p className="form-note" style={{ marginTop: 10 }}>Keep your subject centered for the best vertical crop. The file downloads when you stop.</p>
               </div>
             </div>
           )}

@@ -15,7 +15,8 @@ type Ingest = { whipUrl: string; rtmpsUrl: string; streamKey: string } | null;
 export type Participant = { id: string; name: string; role: string; sessionId?: string; hasVideo: boolean; hasAudio: boolean };
 type Banner = { title: string; subtitle: string } | null;
 type Pinned = { name: string; text: string } | null;
-export type Layout = "grid" | "spotlight";
+export type Layout = "grid" | "spotlight" | "custom";
+type Rect = { x: number; y: number; w: number; h: number };
 type ReplaySlot = { rec: MediaRecorder | null; chunks: Blob[]; start: number; resolve?: (b: Blob) => void; startRec: () => void };
 
 function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -154,6 +155,15 @@ class StudioEngine {
   private replaySlots: ReplaySlot[] = [];
   private replayTimers: ReturnType<typeof setTimeout>[] = [];
   private readonly REPLAY_WINDOW = 40000;
+  // Free "custom" layout: per-tile rectangles (canvas px). Only used when
+  // layout === "custom"; grid/spotlight are unaffected.
+  private tileRects = new Map<string, Rect>();
+  // Vertical (9:16) recording for Shorts - a separate cropped canvas + recorder.
+  verticalRecording = false;
+  private vRec: MediaRecorder | null = null;
+  private vChunks: Blob[] = [];
+  private vCanvas: HTMLCanvasElement | null = null;
+  private vRaf = 0;
   tipAlert: { name: string; amount: number; message: string } | null = null;
   private tipTimer: ReturnType<typeof setTimeout> | null = null;
   // Positions (top-left, canvas px) of the draggable on-air graphics.
@@ -465,7 +475,13 @@ class StudioEngine {
     } else {
       const n = tiles.length || 1;
       const gap = 10;
-      if (this.layout === "spotlight" && tiles.length > 1) {
+      if (this.layout === "custom") {
+        tiles.forEach((t, i) => {
+          const rct = this.tileRect(t.key, i);
+          this.paintTile(ctx, t, rct.x, rct.y, rct.w, rct.h, true);
+          this.drawTileLabel(ctx, t.name, t.key, rct.x, rct.y, rct.w, rct.h);
+        });
+      } else if (this.layout === "spotlight" && tiles.length > 1) {
         const strip = 300;
         const bigW = W - strip - gap;
         this.paintTile(ctx, tiles[0], 0, 0, bigW, H, false);
@@ -902,6 +918,87 @@ class StudioEngine {
   }
   clearGraphics() { this.banner = null; this.pinned = null; this.emit(); }
   setLayout(l: Layout) { this.layout = l; this.emit(); }
+
+  // ---- Custom (free) layout: drag to move, wheel/slider to resize ----
+  private tileRect(key: string, i: number): Rect {
+    const existing = this.tileRects.get(key);
+    if (existing) return existing;
+    const w = 520, h = Math.round((w * 9) / 16);
+    const def: Rect = { x: Math.min(40 + i * 40, W - w), y: Math.min(40 + i * 40, H - h), w, h };
+    this.tileRects.set(key, def);
+    return def;
+  }
+  // Topmost tile under a point (later-drawn tiles win), or null.
+  hitTile(x: number, y: number): string | null {
+    if (this.layout !== "custom") return null;
+    const keys: string[] = [];
+    if (this.hostVideo) keys.push("host");
+    this.guestVideos.forEach((_v, sid) => keys.push(sid));
+    for (let i = keys.length - 1; i >= 0; i--) {
+      const r = this.tileRects.get(keys[i]);
+      if (r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return keys[i];
+    }
+    return null;
+  }
+  tileBox(key: string): Rect { return this.tileRects.get(key) || { x: 0, y: 0, w: 0, h: 0 }; }
+  setTilePos(key: string, x: number, y: number) {
+    const r = this.tileRects.get(key); if (!r) return;
+    r.x = Math.max(-r.w * 0.5, Math.min(x, W - r.w * 0.5));
+    r.y = Math.max(-r.h * 0.5, Math.min(y, H - r.h * 0.5));
+    this.emit();
+  }
+  // Resize around the tile's center, keeping 16:9. factor > 1 grows.
+  resizeTile(key: string, factor: number) {
+    const r = this.tileRects.get(key); if (!r) return;
+    const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    const w = Math.max(160, Math.min(W, r.w * factor));
+    r.w = w; r.h = Math.round((w * 9) / 16); r.x = cx - r.w / 2; r.y = cy - r.h / 2;
+    this.emit();
+  }
+
+  // ---- Vertical (9:16) recording for Shorts/TikTok/Reels ----
+  // Center-crops the landscape program into a 720x1280 canvas and records it
+  // locally. Runs separately from the live stream.
+  startVerticalRecording() {
+    if (this.verticalRecording || !this.canvas || !this.audioDest) return;
+    if (typeof MediaRecorder === "undefined") { this.error = "Vertical recording isn't supported in this browser."; this.emit(); return; }
+    try {
+      const vc = document.createElement("canvas"); vc.width = 720; vc.height = 1280; this.vCanvas = vc;
+      const vctx = vc.getContext("2d");
+      if (!vctx) return;
+      const draw = () => {
+        if (!this.canvas) return;
+        const srcW = (this.canvas.height * 9) / 16; // center column that is 9:16
+        const sx = (this.canvas.width - srcW) / 2;
+        vctx.drawImage(this.canvas, sx, 0, srcW, this.canvas.height, 0, 0, 720, 1280);
+        this.vRaf = requestAnimationFrame(draw);
+      };
+      draw();
+      const out = new MediaStream(vc.captureStream(30).getVideoTracks());
+      this.audioDest.stream.getAudioTracks().forEach((t) => out.addTrack(t));
+      const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus") ? "video/webm;codecs=vp8,opus" : "video/webm";
+      this.vRec = new MediaRecorder(out, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
+      this.vChunks = [];
+      this.vRec.ondataavailable = (e) => { if (e.data && e.data.size) this.vChunks.push(e.data); };
+      this.vRec.onstop = () => {
+        const blob = new Blob(this.vChunks, { type: "video/webm" }); this.vChunks = [];
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+        a.href = url; a.download = `vertical-${stamp}.webm`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 15000);
+      };
+      this.vRec.start(1000);
+      this.verticalRecording = true; this.emit();
+    } catch { this.error = "Could not start vertical recording."; this.emit(); }
+  }
+  stopVerticalRecording() {
+    if (!this.verticalRecording) return;
+    if (this.vRaf) { cancelAnimationFrame(this.vRaf); this.vRaf = 0; }
+    try { this.vRec?.stop(); } catch {}
+    this.vRec = null; this.vCanvas = null; this.verticalRecording = false; this.emit();
+  }
 
   // ---- Branded scene ----
   private loadImg(dataUrl: string): HTMLImageElement | null {
