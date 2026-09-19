@@ -373,6 +373,7 @@ export default function ControlRoom() {
 
   useEffect(() => broadcast.subscribe(force), []);
   useEffect(() => { if (!activeCam && cams[0]) setActiveCam(cams[0].deviceId); }, [cams, activeCam]);
+  useEffect(() => () => broadcast.stopReplayBuffer(), []); // free recorders when leaving the studio
 
   // Keyboard shortcuts for live control (ignored while typing in a field).
   useEffect(() => {
@@ -1108,6 +1109,22 @@ export default function ControlRoom() {
                 </>
               )}
               <p className="form-note" style={{ marginTop: 12 }}>The media audio goes out to your viewers (not your own speakers) to avoid mic echo - watch the Program preview to follow along. Playback starts right away; press Stop to return to the camera.</p>
+
+              <div style={{ marginTop: 20, borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+                <h3 style={{ marginTop: 0 }}>Instant replay</h3>
+                <div className="panel-sub">Keeps a rolling buffer of roughly the last 30-40 seconds. Roll it back on-air or save it as a clip (great for Shorts). Turn it on before the moment you want to catch.</div>
+                {!broadcast.replayActive ? (
+                  <button className="btn btn-primary btn-sm" type="button" onClick={() => { broadcast.startReplayBuffer(); force(); }}>Start replay buffer</button>
+                ) : (
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <button className="btn btn-primary btn-sm" type="button" onClick={() => broadcast.replayNow()}>Replay last ~30s</button>
+                    <button className="btn btn-ghost btn-sm" type="button" onClick={() => broadcast.saveClip()}>Save clip</button>
+                    <button className="btn btn-ghost btn-sm" type="button" onClick={() => { broadcast.stopReplayBuffer(); force(); }}>Stop buffer</button>
+                    <span className="pill published">Buffering</span>
+                  </div>
+                )}
+                <p className="form-note" style={{ marginTop: 10 }}>Replay runs separately from your live stream, so it can&apos;t affect broadcast quality. It uses extra CPU while on - start it when you need it. Clip length lands around 20-40s.</p>
+              </div>
             </div>
           )}
 

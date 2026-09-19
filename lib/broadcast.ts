@@ -16,6 +16,7 @@ export type Participant = { id: string; name: string; role: string; sessionId?: 
 type Banner = { title: string; subtitle: string } | null;
 type Pinned = { name: string; text: string } | null;
 export type Layout = "grid" | "spotlight";
+type ReplaySlot = { rec: MediaRecorder | null; chunks: Blob[]; start: number; resolve?: (b: Blob) => void; startRec: () => void };
 
 function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const rr = Math.min(r, h / 2, w / 2);
@@ -147,6 +148,12 @@ class StudioEngine {
   private transCanvas: HTMLCanvasElement | null = null;
   private transSnap: HTMLCanvasElement | null = null;
   private transStart = 0;
+  // Instant replay: opt-in rolling buffer of the program (isolated from the
+  // live publish path). Two staggered recorders so a clip always has a header.
+  replayActive = false;
+  private replaySlots: ReplaySlot[] = [];
+  private replayTimers: ReturnType<typeof setTimeout>[] = [];
+  private readonly REPLAY_WINDOW = 40000;
   tipAlert: { name: string; amount: number; message: string } | null = null;
   private tipTimer: ReturnType<typeof setTimeout> | null = null;
   // Positions (top-left, canvas px) of the draggable on-air graphics.
@@ -769,17 +776,18 @@ class StudioEngine {
   // runs; an audio-only file mixes over the current camera. Audio goes to the
   // broadcast (not the host's speakers) to avoid mic feedback - use the level
   // slider and watch the Program preview.
-  playMedia(file: File) {
+  playMedia(file: File) { this._startMedia(URL.createObjectURL(file), file.name); }
+  playMediaBlob(blob: Blob, name: string) { this._startMedia(URL.createObjectURL(blob), name); }
+  private _startMedia(url: string, name: string) {
     this.stopMedia();
-    if (!this.audioCtx || !this.audioDest) return;
-    const url = URL.createObjectURL(file);
+    if (!this.audioCtx || !this.audioDest) { try { URL.revokeObjectURL(url); } catch {} return; }
     const el = document.createElement("video");
     el.src = url; el.playsInline = true; el.muted = false;
     (el as any)._objUrl = url;
     el.onloadedmetadata = () => { this.mediaHasVideo = el.videoWidth > 0; this.emit(); };
     el.onended = () => this.stopMedia();
     this.mediaEl = el;
-    this.mediaName = file.name;
+    this.mediaName = name;
     try {
       this.mediaSrc = this.audioCtx.createMediaElementSource(el);
       this.mediaGain = this.audioCtx.createGain();
@@ -804,6 +812,84 @@ class StudioEngine {
     this.mediaPlaying = false; this.mediaHasVideo = false; this.mediaName = "";
     this.emit();
   }
+
+  // ---- Instant replay (opt-in, isolated from the live WHIP publish) ----
+  // Runs two MediaRecorders on a separate capture of the program canvas,
+  // staggered by half the window, so at any moment one holds ~20-40s with a
+  // valid file header. Grabbing a clip stops the fuller one (flushing a valid
+  // webm) and restarts it. A bug here can't affect the live stream.
+  startReplayBuffer() {
+    if (this.replayActive || !this.canvas || !this.audioDest) return;
+    if (typeof MediaRecorder === "undefined") { this.error = "Replay isn't supported in this browser."; this.emit(); return; }
+    try {
+      const cs = this.canvas.captureStream(24);
+      const out = new MediaStream(cs.getVideoTracks());
+      this.audioDest.stream.getAudioTracks().forEach((t) => out.addTrack(t));
+      const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus") ? "video/webm;codecs=vp8,opus" : "video/webm";
+      const makeSlot = (delay: number): ReplaySlot => {
+        const slot: ReplaySlot = { rec: null, chunks: [], start: 0, startRec: () => {} };
+        slot.startRec = () => {
+          try {
+            const rec = new MediaRecorder(out, { mimeType: mime, videoBitsPerSecond: 2_500_000 });
+            slot.rec = rec; slot.chunks = []; slot.start = performance.now();
+            rec.ondataavailable = (e) => { if (e.data && e.data.size) slot.chunks.push(e.data); };
+            rec.onstop = () => { const b = new Blob(slot.chunks, { type: "video/webm" }); const r = slot.resolve; slot.resolve = undefined; if (r) r(b); };
+            rec.start();
+          } catch {}
+        };
+        this.replayTimers.push(setTimeout(() => {
+          slot.startRec();
+          this.replayTimers.push(setInterval(() => {
+            if (slot.resolve) return; // a clip is flushing; don't rotate now
+            try { slot.rec?.stop(); } catch {}
+            this.replayTimers.push(setTimeout(() => slot.startRec(), 60));
+          }, this.REPLAY_WINDOW) as unknown as ReturnType<typeof setTimeout>);
+        }, delay));
+        return slot;
+      };
+      this.replaySlots = [makeSlot(0), makeSlot(this.REPLAY_WINDOW / 2)];
+      this.replayActive = true; this.emit();
+    } catch { this.error = "Could not start replay."; this.emit(); }
+  }
+
+  stopReplayBuffer() {
+    this.replayTimers.forEach((t) => { clearTimeout(t); clearInterval(t as unknown as ReturnType<typeof setInterval>); });
+    this.replayTimers = [];
+    this.replaySlots.forEach((s) => { try { s.rec?.stop(); } catch {} });
+    this.replaySlots = [];
+    this.replayActive = false; this.emit();
+  }
+
+  // Flush the fuller recorder into a valid webm blob (and restart it).
+  private async grabClip(): Promise<Blob | null> {
+    if (!this.replayActive || this.replaySlots.length === 0) return null;
+    const now = typeof performance !== "undefined" ? performance.now() : 0;
+    const cand = this.replaySlots.filter((s) => s.rec && !s.resolve).sort((a, b) => (now - b.start) - (now - a.start))[0];
+    if (!cand || !cand.rec) return null;
+    const blob = await new Promise<Blob>((res) => { cand.resolve = res; try { cand.rec!.stop(); } catch { cand.resolve = undefined; res(new Blob()); } });
+    cand.startRec();
+    return blob && blob.size ? blob : null;
+  }
+
+  // Roll the last ~30s back onto the broadcast.
+  async replayNow() {
+    const blob = await this.grabClip();
+    if (blob) this.playMediaBlob(blob, "Instant replay");
+    else { this.error = "No replay captured yet - give the buffer a few seconds."; this.emit(); }
+  }
+
+  // Download the last ~30s as a clip (great for Shorts).
+  async saveClip() {
+    const blob = await this.grabClip();
+    if (!blob) { this.error = "No replay captured yet - give the buffer a few seconds."; this.emit(); return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+    a.href = url; a.download = `clip-${stamp}.webm`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+  }
+
   hideBanner() { this.banner = null; this.emit(); }
   setPinned(name: string, text: string) { this.pinned = { name, text }; this.emit(); }
   clearPinned() { this.pinned = null; this.emit(); }
