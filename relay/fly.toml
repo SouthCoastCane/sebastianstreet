@@ -5,7 +5,7 @@
 # Set the shared secret once:  fly secrets set RELAY_SECRET=<same-value-as-vercel>
 # Then in Vercel set:  RELAY_URL=https://<app-name>.fly.dev  and the same RELAY_SECRET.
 
-app = "cane-simulcast-relay"
+app = "sebastian-street-relay"
 primary_region = "iad"
 
 [build]
