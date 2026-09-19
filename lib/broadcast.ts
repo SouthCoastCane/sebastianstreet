@@ -141,6 +141,12 @@ class StudioEngine {
   mediaHasVideo = false;
   mediaName = "";
   mediaLevel = 1;
+  // Scene transition: cross-fade from a snapshot of the previous look.
+  transitionStyle: "cut" | "fade" = "fade";
+  transMs = 380;
+  private transCanvas: HTMLCanvasElement | null = null;
+  private transSnap: HTMLCanvasElement | null = null;
+  private transStart = 0;
   tipAlert: { name: string; amount: number; message: string } | null = null;
   private tipTimer: ReturnType<typeof setTimeout> | null = null;
   // Positions (top-left, canvas px) of the draggable on-air graphics.
@@ -397,7 +403,31 @@ class StudioEngine {
     const now = typeof performance !== "undefined" ? performance.now() : 0;
     if (now - this.lastDraw < 1000 / 30) return;
     this.lastDraw = now;
+    this.drawProgram(ctx);
+    // Cross-fade: fade the pre-switch snapshot out over the new look.
+    if (this.transSnap) {
+      const p = Math.min(1, (now - this.transStart) / this.transMs);
+      ctx.save(); ctx.globalAlpha = 1 - p; ctx.drawImage(this.transSnap, 0, 0, W, H); ctx.restore();
+      if (p >= 1) this.transSnap = null;
+    }
+  }
 
+  // Snapshot the current frame so the next state change cross-fades from it.
+  beginTransition() {
+    if (this.transitionStyle === "cut" || !this.canvas) return;
+    try {
+      if (!this.transCanvas) { this.transCanvas = document.createElement("canvas"); this.transCanvas.width = W; this.transCanvas.height = H; }
+      const c = this.transCanvas.getContext("2d"); if (!c) return;
+      c.clearRect(0, 0, W, H); c.drawImage(this.canvas, 0, 0, W, H);
+      this.transSnap = this.transCanvas;
+      this.transStart = typeof performance !== "undefined" ? performance.now() : 0;
+    } catch {}
+  }
+  setTransitionStyle(s: "cut" | "fade") { this.transitionStyle = s; this.emit(); }
+
+  // Draw the current program look (all the mode branches). renderFrame wraps
+  // this and applies the transition overlay.
+  private drawProgram(ctx: CanvasRenderingContext2D) {
     // Intro/"starting soon" bumper replaces the whole program visually when on.
     if (this.bumperEnabled) { this.drawBumper(ctx); return; }
 

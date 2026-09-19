@@ -85,6 +85,7 @@ export default function ControlRoom() {
   const [liveDelivery, setLiveDelivery] = useState<"own" | "youtube">("own");
   const [ytChannelId, setYtChannelId] = useState(PRIMARY_CHANNEL.channelId);
   const [twitchChannel, setTwitchChannel] = useState("");
+  const [activeCam, setActiveCam] = useState("");
   const [rundown, setRundown] = useState<RundownCfg>({ enabled: false, title: "RUNDOWN", showTimer: true, activeIndex: 0, items: [] });
   const [rundownMsg, setRundownMsg] = useState("");
   const [pip, setPip] = useState(false);
@@ -309,8 +310,17 @@ export default function ControlRoom() {
     if (f) { broadcast.playMedia(f); force(); }
   }
 
+  // ---- Multi-camera: instant switch between video inputs (with a fade) ----
+  function switchCam(id: string) {
+    broadcast.beginTransition();
+    broadcast.ensureCamera(id, undefined);
+    setActiveCam(id);
+    force();
+  }
+
   // ---- Scenes: one-tap program looks (bound to keys 1-4) ----
   function applyScene(key: "camera" | "spotlight" | "studio" | "intro") {
+    broadcast.beginTransition();
     if (key === "intro") { updateBumper({ enabled: true }); force(); return; }
     if (broadcast.bumperEnabled) updateBumper({ enabled: false });
     if (broadcast.mediaPlaying) broadcast.stopMedia();
@@ -362,6 +372,7 @@ export default function ControlRoom() {
   }
 
   useEffect(() => broadcast.subscribe(force), []);
+  useEffect(() => { if (!activeCam && cams[0]) setActiveCam(cams[0].deviceId); }, [cams, activeCam]);
 
   // Keyboard shortcuts for live control (ignored while typing in a field).
   useEffect(() => {
@@ -555,7 +566,7 @@ export default function ControlRoom() {
           <div className="panel-split" style={{ marginTop: 14 }}>
             <div className="form-field">
               <label>Camera</label>
-              <select onChange={(e) => broadcast.ensureCamera(e.target.value, undefined)}>
+              <select value={activeCam} onChange={(e) => switchCam(e.target.value)}>
                 {cams.map((c) => <option key={c.deviceId} value={c.deviceId}>{c.label || "Camera"}</option>)}
               </select>
             </div>
@@ -566,6 +577,16 @@ export default function ControlRoom() {
               </select>
             </div>
           </div>
+          {cams.length > 1 && (
+            <div style={{ marginTop: 10 }}>
+              <span className="dest-meta" style={{ display: "block", marginBottom: 6 }}>Quick camera switch</span>
+              <div className="filters" style={{ margin: 0 }}>
+                {cams.map((c, i) => (
+                  <button key={c.deviceId} type="button" className={`filter-btn${activeCam === c.deviceId ? " active" : ""}`} onClick={() => switchCam(c.deviceId)}>{c.label ? c.label.slice(0, 22) : `Cam ${i + 1}`}</button>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             {!live ? (
               <button className="btn btn-live" type="button" onClick={goLive} disabled={broadcast.connecting || ingest === null}>
@@ -582,8 +603,8 @@ export default function ControlRoom() {
               </div>
             ) : (
               <div className="filters" style={{ margin: 0 }}>
-                <button className={`filter-btn${broadcast.layout === "grid" ? " active" : ""}`} type="button" onClick={() => broadcast.setLayout("grid")}>Grid</button>
-                <button className={`filter-btn${broadcast.layout === "spotlight" ? " active" : ""}`} type="button" onClick={() => broadcast.setLayout("spotlight")}>Spotlight</button>
+                <button className={`filter-btn${broadcast.layout === "grid" ? " active" : ""}`} type="button" onClick={() => { broadcast.beginTransition(); broadcast.setLayout("grid"); }}>Grid</button>
+                <button className={`filter-btn${broadcast.layout === "spotlight" ? " active" : ""}`} type="button" onClick={() => { broadcast.beginTransition(); broadcast.setLayout("spotlight"); }}>Spotlight</button>
               </div>
             )}
             <button className={`btn btn-sm ${broadcast.cameraOn ? "btn-ghost" : "btn-danger"}`} type="button" onClick={() => broadcast.setCameraOn(!broadcast.cameraOn)}>{broadcast.cameraOn ? "Camera on" : "Camera off"}</button>
@@ -603,7 +624,13 @@ export default function ControlRoom() {
 
           {/* One-tap program "scenes" (also keys 1-4). Studio = branded scene. */}
           <div style={{ marginTop: 12 }}>
-            <span className="dest-meta" style={{ display: "block", marginBottom: 6 }}>Scenes <span style={{ opacity: .7 }}>(press 1-4)</span></span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
+              <span className="dest-meta">Scenes <span style={{ opacity: .7 }}>(press 1-4)</span></span>
+              <div className="filters" style={{ margin: 0 }}>
+                <button type="button" className={`filter-btn${broadcast.transitionStyle === "cut" ? " active" : ""}`} onClick={() => { broadcast.setTransitionStyle("cut"); force(); }}>Cut</button>
+                <button type="button" className={`filter-btn${broadcast.transitionStyle === "fade" ? " active" : ""}`} onClick={() => { broadcast.setTransitionStyle("fade"); force(); }}>Fade</button>
+              </div>
+            </div>
             <div className="filters" style={{ margin: 0 }}>
               {([["camera", "1 · Camera"], ["spotlight", "2 · Spotlight"], ["studio", "3 · Studio"], ["intro", "4 · Intro"]] as ["camera" | "spotlight" | "studio" | "intro", string][]).map(([k, label]) => (
                 <button key={k} type="button" className={`filter-btn${activeScene() === k ? " active" : ""}`} onClick={() => applyScene(k)}>{label}</button>
