@@ -602,7 +602,7 @@ export default function ControlRoom() {
               </div>
             </div>
           )}
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", rowGap: 10, marginTop: 16 }}>
             {!live ? (
               <button className="btn btn-live" type="button" onClick={goLive} disabled={broadcast.connecting || ingest === null}>
                 {broadcast.connecting ? "Connecting..." : "Go Live"}
