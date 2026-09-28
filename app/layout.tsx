@@ -4,6 +4,7 @@ import { Inter, Anton } from "next/font/google";
 import "./globals.css";
 import { getSiteConfig } from "@/lib/siteConfig";
 import { headingStack, bodyStack, googleFontsHref } from "@/lib/fonts";
+import { CUSTOM_FONT, CUSTOM_FONT_FAMILY } from "@/lib/siteData";
 
 // Render per request so admin edits to content + branding appear immediately.
 export const dynamic = "force-dynamic";
@@ -59,6 +60,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Chosen typefaces override the default font tokens the stylesheet reads. Only
   // override for NON-default fonts - the defaults (Anton/Inter) are loaded by
   // next/font under hashed family names, so leave their vars untouched.
+  const hasCustom = Boolean(branding.customFont);
+  const resolveFont = (name: string, body: boolean): string =>
+    name === CUSTOM_FONT && hasCustom ? `'${CUSTOM_FONT_FAMILY}', ${body ? "sans-serif" : "sans-serif"}` : body ? bodyStack(name) : headingStack(name);
   const fontHref = googleFontsHref(branding.headingFont, branding.bodyFont);
   const themeVars = {
     "--amber": branding.accent,
@@ -72,8 +76,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     "--mute": mute,
     "--text-muted": mute,
     "--text-dim": dim,
-    ...(branding.headingFont && branding.headingFont !== "Anton" ? { "--font-anton": headingStack(branding.headingFont) } : {}),
-    ...(branding.bodyFont && branding.bodyFont !== "Inter" ? { "--font-inter": bodyStack(branding.bodyFont) } : {}),
+    ...(branding.headingFont && branding.headingFont !== "Anton" && !(branding.headingFont === CUSTOM_FONT && !hasCustom) ? { "--font-anton": resolveFont(branding.headingFont, false) } : {}),
+    ...(branding.bodyFont && branding.bodyFont !== "Inter" && !(branding.bodyFont === CUSTOM_FONT && !hasCustom) ? { "--font-inter": resolveFont(branding.bodyFont, true) } : {}),
   } as CSSProperties;
 
   return (
@@ -81,6 +85,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         {fontHref && <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />}
         {fontHref && <link rel="stylesheet" href={fontHref} />}
+        {/* Register the admin-uploaded custom font, if any. */}
+        {hasCustom && <style dangerouslySetInnerHTML={{ __html: `@font-face{font-family:'${CUSTOM_FONT_FAMILY}';src:url(${branding.customFont});font-display:swap;}` }} />}
         {/* Apply the saved light/dark theme before paint to avoid a flash. */}
         <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem('theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}` }} />
       </head>

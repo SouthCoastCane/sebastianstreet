@@ -205,6 +205,11 @@ export async function POST(request: Request) {
       const v = clean[k];
       if (typeof v === "string" && v.startsWith("data:") && (!v.startsWith("data:image") || v.length > 900_000)) clean[k] = "";
     }
+    // Uploaded font: keep it a reasonable data URL (never an image) so the
+    // branding doc stays under Firestore's 1MB limit.
+    if (typeof clean.customFont === "string" && clean.customFont.startsWith("data:")) {
+      if (clean.customFont.startsWith("data:image") || clean.customFont.length > 560_000) clean.customFont = "";
+    }
     if ("liveDelivery" in clean && clean.liveDelivery !== "youtube") clean.liveDelivery = "own";
     await db.collection("site").doc(section).set(clean, { merge: true });
     return NextResponse.json({ saved: true });

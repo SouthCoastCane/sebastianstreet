@@ -227,8 +227,10 @@ export type SiteBranding = {
   twitchChannel: string; // twitch username to merge chat from (blank = off)
   hostName: string; // display name for the host (on the tile, in chat, guest roster)
   textColor: string; // main text color override ("" = auto-contrast to background)
-  headingFont: string; // display/heading typeface name (see lib/fonts.ts)
-  bodyFont: string; // body/UI typeface name (see lib/fonts.ts)
+  headingFont: string; // display/heading typeface name (see lib/fonts.ts), or "__custom__"
+  bodyFont: string; // body/UI typeface name (see lib/fonts.ts), or "__custom__"
+  customFont: string; // uploaded font file as a data URL ("" = none)
+  customFontName: string; // label for the uploaded font (from its filename)
 };
 
 export const DEFAULT_BRANDING: SiteBranding = {
@@ -251,7 +253,14 @@ export const DEFAULT_BRANDING: SiteBranding = {
   textColor: "",
   headingFont: "Anton",
   bodyFont: "Inter",
+  customFont: "",
+  customFontName: "",
 };
+
+// Sentinel value used by the font pickers to mean "the uploaded custom font".
+export const CUSTOM_FONT = "__custom__";
+// The @font-face family name the custom font is registered under.
+export const CUSTOM_FONT_FAMILY = "SiteCustomFont";
 
 // Branded "scene": background behind the host, optional green-screen removal,
 // plus a frame overlay + logo (like a TV broadcast look).

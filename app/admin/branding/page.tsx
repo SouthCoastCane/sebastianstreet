@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DEFAULT_BRANDING, type SiteBranding } from "@/lib/siteData";
+import { DEFAULT_BRANDING, CUSTOM_FONT, CUSTOM_FONT_FAMILY, type SiteBranding } from "@/lib/siteData";
 import { HEADING_FONTS, BODY_FONTS, headingStack, bodyStack } from "@/lib/fonts";
 import { saveSection, loadConfig } from "@/lib/saveSection";
 import PreviewSiteModal from "@/components/PreviewSiteModal";
@@ -56,6 +56,39 @@ export default function AdminBranding() {
   const [preview, setPreview] = useState(false);
   const logoInput = useRef<HTMLInputElement>(null);
   const faviconInput = useRef<HTMLInputElement>(null);
+  const fontInput = useRef<HTMLInputElement>(null);
+
+  // Read an uploaded font file into a data URL we can store + register with
+  // @font-face. WOFF2 is smallest; we cap size so the branding doc stays under
+  // Firestore's 1MB limit alongside the logo/favicon.
+  async function onPickFont(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!/\.(woff2?|ttf|otf)$/i.test(file.name)) {
+      setStatus("error"); setMessage("Please choose a font file: .woff2, .woff, .ttf, or .otf.");
+      return;
+    }
+    if (file.size > 400_000) {
+      setStatus("error"); setMessage("That font is too large (max ~400KB). Tip: convert it to WOFF2 to shrink it dramatically.");
+      return;
+    }
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result || ""));
+      r.onerror = () => reject(new Error("read failed"));
+      r.readAsDataURL(file);
+    }).catch(() => "");
+    if (!dataUrl) { setStatus("error"); setMessage("Could not read that font file."); return; }
+    const name = file.name.replace(/\.(woff2?|ttf|otf)$/i, "");
+    setForm((f) => ({ ...f, customFont: dataUrl, customFontName: name }));
+    setStatus("idle");
+    setMessage("Font uploaded. Pick it under Heading font or Body font, then Save changes.");
+  }
+
+  // Family used to preview a chosen font value (handles the uploaded font).
+  const previewFamily = (val: string, body: boolean) =>
+    val === CUSTOM_FONT ? `'${CUSTOM_FONT_FAMILY}', sans-serif` : body ? bodyStack(val) : headingStack(val);
 
   useEffect(() => {
     loadConfig()
@@ -216,19 +249,33 @@ export default function AdminBranding() {
           <div className="panel">
             <h3>Typography</h3>
             <div className="panel-sub">Fonts and text color across the whole site.</div>
+            {/* Register the uploaded font so it previews correctly in this panel. */}
+            {form.customFont && <style dangerouslySetInnerHTML={{ __html: `@font-face{font-family:'${CUSTOM_FONT_FAMILY}';src:url(${form.customFont});font-display:swap;}` }} />}
             <div className="form-field">
               <label>Heading font</label>
-              <select value={form.headingFont} onChange={(e) => set("headingFont", e.target.value)} style={{ fontFamily: headingStack(form.headingFont) }}>
+              <select value={form.headingFont} onChange={(e) => set("headingFont", e.target.value)} style={{ fontFamily: previewFamily(form.headingFont, false) }}>
                 {Object.keys(HEADING_FONTS).map((f) => <option key={f} value={f} style={{ fontFamily: headingStack(f) }}>{f}{f === "Anton" ? " (default)" : ""}</option>)}
+                {form.customFont && <option value={CUSTOM_FONT}>Uploaded font{form.customFontName ? ` (${form.customFontName})` : ""}</option>}
               </select>
               <p className="form-note" style={{ marginTop: 4 }}>The big display headlines.</p>
             </div>
             <div className="form-field">
               <label>Body font</label>
-              <select value={form.bodyFont} onChange={(e) => set("bodyFont", e.target.value)} style={{ fontFamily: bodyStack(form.bodyFont) }}>
+              <select value={form.bodyFont} onChange={(e) => set("bodyFont", e.target.value)} style={{ fontFamily: previewFamily(form.bodyFont, true) }}>
                 {Object.keys(BODY_FONTS).map((f) => <option key={f} value={f} style={{ fontFamily: bodyStack(f) }}>{f}{f === "Inter" ? " (default)" : ""}</option>)}
+                {form.customFont && <option value={CUSTOM_FONT}>Uploaded font{form.customFontName ? ` (${form.customFontName})` : ""}</option>}
               </select>
               <p className="form-note" style={{ marginTop: 4 }}>Paragraphs, menus, and buttons.</p>
+            </div>
+            <div className="form-field">
+              <label>Upload your own font</label>
+              <input ref={fontInput} type="file" accept=".woff2,.woff,.ttf,.otf,font/*" hidden onChange={onPickFont} />
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <button className="btn btn-ghost btn-sm" type="button" onClick={() => fontInput.current?.click()}>{form.customFont ? "Replace font" : "Upload font"}</button>
+                {form.customFont && <button className="btn btn-ghost btn-sm" type="button" onClick={() => { setForm((f) => ({ ...f, customFont: "", customFontName: "", headingFont: f.headingFont === CUSTOM_FONT ? "Anton" : f.headingFont, bodyFont: f.bodyFont === CUSTOM_FONT ? "Inter" : f.bodyFont })); }}>Remove</button>}
+                {form.customFont && <span className="form-note" style={{ margin: 0, fontFamily: `'${CUSTOM_FONT_FAMILY}', sans-serif`, fontSize: 16 }}>{form.customFontName || "Custom font"} - Aa Bb Cc</span>}
+              </div>
+              <p className="form-note" style={{ marginTop: 4 }}>.woff2 (best), .woff, .ttf, or .otf, up to ~400KB. After uploading, select <strong>Uploaded font</strong> above.</p>
             </div>
             <div className="form-field">
               <label>Text color</label>
