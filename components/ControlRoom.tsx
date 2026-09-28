@@ -12,11 +12,14 @@ const WS_BASE = process.env.NEXT_PUBLIC_CHAT_WS_URL || "";
 type Tab = "onair" | "chat" | "guests" | "sources" | "scene" | "intro" | "sounds" | "audio" | "rundown" | "media";
 type ChatMessage = { id: string; name: string; text: string; uid?: string; tip?: number; source?: "site" | "youtube" | "twitch" | "facebook" };
 
-// Small source badge (Site / YT / TW / FB) shown before a chat message.
-const SRC_LABEL: Record<string, string> = { youtube: "YT", twitch: "TW", facebook: "FB", site: "Site" };
-function srcBadge(source?: string) {
-  const key = source || "site";
-  return <span className={`src src-${key}`}>{SRC_LABEL[key] || "Site"}</span>;
+// Source badge: the site's own logo for site messages, platform logos for
+// YouTube/Twitch/Facebook messages.
+function srcBadge(source?: string, logo?: string) {
+  const s = source || "site";
+  if (s === "youtube") return <span className="src-ic" title="YouTube"><svg width="20" height="14" viewBox="0 0 28 20"><rect width="28" height="20" rx="5" fill="#FF0033" /><path d="M11 6l7 4-7 4z" fill="#fff" /></svg></span>;
+  if (s === "twitch") return <span className="src-ic" title="Twitch"><svg width="16" height="16" viewBox="0 0 24 24" fill="#9146FF"><path d="M4 2 3 6v13h4v3h3l3-3h4l6-6V2H4zm16 9-3 3h-4l-3 3v-3H7V4h13v7zM16 6h-2v5h2V6zm-5 0H9v5h2V6z" /></svg></span>;
+  if (s === "facebook") return <span className="src-ic" title="Facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7v-3.5h3.1V9.4c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9v2.2h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12z" /></svg></span>;
+  return logo ? <img className="src-logo" src={logo} alt="Site" /> : <span className="src src-site">Site</span>;
 }
 type SceneCfg = { enabled: boolean; mode: "none" | "chroma" | "ml"; chroma: string; background: string; frame: string; logo: string; tickerOn: boolean; tickerLabel: string; ticker: string };
 type BumperCfg = { enabled: boolean; mode: "card" | "video"; headline: string; subtext: string; background: string; videoUrl: string; startsAt: number };
@@ -89,6 +92,7 @@ export default function ControlRoom() {
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [chatDraft, setChatDraft] = useState("");
+  const [siteLogo, setSiteLogo] = useState(""); // brand logo, shown as the site badge in chat
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [reveal, setReveal] = useState(false);
@@ -185,7 +189,7 @@ export default function ControlRoom() {
     fetch("/api/site-config", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
-        if (d?.branding?.logo) broadcast.setBrandLogo(d.branding.logo);
+        if (d?.branding?.logo) { broadcast.setBrandLogo(d.branding.logo); setSiteLogo(d.branding.logo); }
         if (d?.branding?.accent) broadcast.setBrandAccent(d.branding.accent);
         if (d?.branding?.liveDelivery) setLiveDelivery(d.branding.liveDelivery);
         if (d?.branding?.youtubeChannelId) setYtChannelId(d.branding.youtubeChannelId);
@@ -817,7 +821,7 @@ export default function ControlRoom() {
                 {chat.map((m) => (
                   <div className="mod-row" key={m.id}>
                     <div className={`msg${m.tip ? " tipmsg" : ""}`} style={{ minWidth: 0 }}>
-                      {m.tip ? <><span className="tipamt">${m.tip.toFixed(2)}</span><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}</> : <>{srcBadge(m.source)}<b>{m.name}</b> {linkify(m.text)}</>}
+                      {m.tip ? <><span className="tipamt">${m.tip.toFixed(2)}</span><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}</> : <>{srcBadge(m.source, siteLogo)}<b>{m.name}</b> {linkify(m.text)}</>}
                     </div>
                     {m.uid && (
                       <div className="mod-actions">

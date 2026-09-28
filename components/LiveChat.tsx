@@ -18,7 +18,21 @@ import {
 
 type ChatMessage = { id: string; name: string; text: string; ts: number; tip?: number; source?: "site" | "youtube" | "twitch" | "facebook" };
 
-const SRC_LABEL: Record<string, string> = { youtube: "YT", twitch: "TW", facebook: "FB", site: "Site" };
+// Little source badge: the site's own logo for site messages, and the platform
+// logo (YouTube/Twitch/Facebook) for messages pulled in from those services.
+function SourceBadge({ source, logo }: { source?: string; logo?: string }) {
+  const s = source || "site";
+  if (s === "youtube") return (
+    <span className="src-ic" title="YouTube"><svg width="20" height="14" viewBox="0 0 28 20"><rect width="28" height="20" rx="5" fill="#FF0033" /><path d="M11 6l7 4-7 4z" fill="#fff" /></svg></span>
+  );
+  if (s === "twitch") return (
+    <span className="src-ic" title="Twitch"><svg width="16" height="16" viewBox="0 0 24 24" fill="#9146FF"><path d="M4 2 3 6v13h4v3h3l3-3h4l6-6V2H4zm16 9-3 3h-4l-3 3v-3H7V4h13v7zM16 6h-2v5h2V6zm-5 0H9v5h2V6z" /></svg></span>
+  );
+  if (s === "facebook") return (
+    <span className="src-ic" title="Facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12a12 12 0 1 0-13.9 11.9v-8.4H7v-3.5h3.1V9.4c0-3 1.8-4.7 4.5-4.7 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9v2.2h3.4l-.5 3.5h-2.9v8.4A12 12 0 0 0 24 12z" /></svg></span>
+  );
+  return logo ? <img className="src-logo" src={logo} alt="Site" /> : <span className="src src-site">Site</span>;
+}
 
 // Make URLs in a chat message clickable.
 function linkify(text: string) {
@@ -102,6 +116,7 @@ export default function LiveChat({ asGuest }: { asGuest?: string } = {}) {
   const [tipThanks, setTipThanks] = useState(false);
   const [tipSecret, setTipSecret] = useState<string | null>(null); // open modal when set
   const [tipsOn, setTipsOn] = useState(true); // host can hide tips (branding.tipsEnabled)
+  const [siteLogo, setSiteLogo] = useState(""); // shown as the badge on site messages
 
   const wsRef = useRef<WebSocket | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
@@ -113,7 +128,7 @@ export default function LiveChat({ asGuest }: { asGuest?: string } = {}) {
   useEffect(() => {
     fetch("/api/site-config", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => { if (d?.branding) setTipsOn(d.branding.tipsEnabled !== false); })
+      .then((d) => { if (d?.branding) { setTipsOn(d.branding.tipsEnabled !== false); setSiteLogo(d.branding.logo || ""); } })
       .catch(() => {});
   }, []);
 
@@ -300,7 +315,7 @@ export default function LiveChat({ asGuest }: { asGuest?: string } = {}) {
             </div>
           ) : (
             <div className={`msg${m.name === HOST ? " is-host" : ""}`} key={m.id}>
-              <span className={`src src-${m.source || "site"}`}>{SRC_LABEL[m.source || "site"] || "Site"}</span><b>{m.name}</b>{linkify(m.text)}
+              <SourceBadge source={m.source} logo={siteLogo} /><b>{m.name}</b>{linkify(m.text)}
             </div>
           )
         )}
