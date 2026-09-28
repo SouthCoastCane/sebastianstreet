@@ -98,8 +98,10 @@ export default function GuestJoinPage() {
         setRemotes((prev) => (prev.some((r) => r.sid === sid) ? [...prev] : [...prev, { sid, name: nameBySession.current.get(sid) || "Guest" }]));
       });
       rtc.current = session;
-      // Publish the processed stream when a camera is in use, else the raw stream.
-      const publishStream = bg.current ? bg.current.stream() : localStream.current;
+      // With background OFF, publish the RAW camera track (not the canvas) so the
+      // feed keeps running at full framerate even when the tab is minimized. The
+      // processing canvas (blur/virtual bg) is only used when a background is on.
+      const publishStream = (bgMode !== "off" && bg.current) ? bg.current.stream() : localStream.current;
       if (publishStream) {
         await session.publish(publishStream);
         sessionId = session.sessionId; // set by publish (Cloudflare creates the session there)
@@ -211,6 +213,15 @@ export default function GuestJoinPage() {
   function pickBgMode(m: BgMode) {
     setBgMode(m);
     bg.current?.setMode(m);
+    // Swap the PUBLISHED video track: raw camera when off (survives minimize),
+    // processed canvas when a background is on.
+    const sender = videoSender();
+    if (sender && !sharing) {
+      const track = m === "off"
+        ? localStream.current?.getVideoTracks()[0]
+        : bg.current?.stream().getVideoTracks()[0];
+      if (track) sender.replaceTrack(track).catch(() => {});
+    }
   }
   function pickBgImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; e.target.value = "";
@@ -256,7 +267,7 @@ export default function GuestJoinPage() {
   async function stopScreen() {
     screenStream.current?.getTracks().forEach((t) => t.stop());
     screenStream.current = null;
-    const camTrack = (bg.current ? bg.current.stream() : localStream.current)?.getVideoTracks()[0] || null;
+    const camTrack = (bgMode !== "off" && bg.current ? bg.current.stream() : localStream.current)?.getVideoTracks()[0] || null;
     await videoSender()?.replaceTrack(camTrack);
     setSharing(false);
   }
