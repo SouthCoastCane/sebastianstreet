@@ -652,7 +652,7 @@ export default function ControlRoom() {
   const showBanner = () => { if (!title.trim()) return; broadcast.setBanner(title, subtitle); pushOverlay({ action: "banner", title, subtitle }); };
   const hideBanner = () => { broadcast.hideBanner(); pushOverlay({ action: "hideBanner" }); };
   const clearAll = () => { broadcast.clearGraphics(); pushOverlay({ action: "clear" }); };
-  const pin = (m: ChatMessage) => { broadcast.setPinned(m.name, m.text); pushOverlay({ action: "comment", name: m.name, text: m.text }); };
+  const pin = (m: ChatMessage) => { broadcast.setPinned(m.name, m.text, m.source); pushOverlay({ action: "comment", name: m.name, text: m.text, source: m.source }); };
   // Host posts into the live chat (shows as the host on the site; links allowed).
   const sendChat = () => {
     const text = chatDraft.trim();
@@ -878,7 +878,7 @@ export default function ControlRoom() {
                   const pinned = isPinned(m);
                   return (
                     <div className="dest-row" key={m.id} style={{ padding: "9px 0" }}>
-                      <div style={{ minWidth: 0 }}><div className="dest-name" style={{ color: "var(--amber)" }}>{m.name}</div><div className="dest-meta" style={{ whiteSpace: "normal" }}>{m.text}</div></div>
+                      <div style={{ minWidth: 0 }}><div className="dest-name" style={{ color: "var(--amber)", display: "flex", alignItems: "center", gap: 6 }}>{srcBadge(m.source, siteLogo)}<span>{m.name}</span></div><div className="dest-meta" style={{ whiteSpace: "normal" }}>{m.text}</div></div>
                       <button className={`btn btn-sm ${pinned ? "btn-primary" : "btn-ghost"}`} type="button" onClick={() => (pinned ? unpin() : pin(m))}>{pinned ? "Pinned" : "Pin"}</button>
                     </div>
                   );

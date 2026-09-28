@@ -14,7 +14,7 @@ const W = 1280, H = 720;
 type Ingest = { whipUrl: string; rtmpsUrl: string; streamKey: string } | null;
 export type Participant = { id: string; name: string; role: string; sessionId?: string; hasVideo: boolean; hasAudio: boolean };
 type Banner = { title: string; subtitle: string } | null;
-type Pinned = { name: string; text: string } | null;
+type Pinned = { name: string; text: string; source?: string } | null;
 export type Layout = "grid" | "spotlight" | "custom";
 type Rect = { x: number; y: number; w: number; h: number };
 type ReplaySlot = { rec: MediaRecorder | null; chunks: Blob[]; start: number; resolve?: (b: Blob) => void; startRec: () => void };
@@ -760,6 +760,46 @@ class StudioEngine {
     ctx.restore();
   }
 
+  // Draw a small platform badge centered at (cx, cy) on the pinned lower-third,
+  // matching the source logos in the chat lists. Returns true if it drew one.
+  private drawSourceBadge(ctx: CanvasRenderingContext2D, source: string | undefined, cx: number, cy: number, size: number): boolean {
+    const s = source || "site";
+    ctx.save();
+    if (s === "youtube") {
+      const w = size * 1.35, h = size * 0.95;
+      roundRectPath(ctx, cx - w / 2, cy - h / 2, w, h, 6);
+      ctx.fillStyle = "#FF0033"; ctx.fill();
+      const t = h * 0.26;
+      ctx.fillStyle = "#fff"; ctx.beginPath();
+      ctx.moveTo(cx - t * 0.55, cy - t); ctx.lineTo(cx - t * 0.55, cy + t); ctx.lineTo(cx + t * 0.9, cy); ctx.closePath(); ctx.fill();
+      ctx.restore(); return true;
+    }
+    if (s === "twitch") {
+      const r = size / 2;
+      roundRectPath(ctx, cx - r, cy - r, size, size, 5);
+      ctx.fillStyle = "#9146FF"; ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.round(size * 0.72)}px Inter, sans-serif`;
+      ctx.textAlign = "center"; ctx.fillText("t", cx, cy + 1); ctx.textAlign = "left";
+      ctx.restore(); return true;
+    }
+    if (s === "facebook") {
+      ctx.beginPath(); ctx.arc(cx, cy, size / 2, 0, Math.PI * 2); ctx.fillStyle = "#1877F2"; ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.round(size * 0.72)}px Georgia, serif`;
+      ctx.textAlign = "center"; ctx.fillText("f", cx, cy + 1); ctx.textAlign = "left";
+      ctx.restore(); return true;
+    }
+    // Site: use the brand logo if set, clipped into a circle.
+    if (this.brandLogo?.complete && this.brandLogo.naturalWidth) {
+      const r = size / 2;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+      const asp = this.brandLogo.naturalHeight / this.brandLogo.naturalWidth || 1;
+      let dw = size, dh = size * asp; if (dh < size) { dh = size; dw = size / asp; }
+      ctx.drawImage(this.brandLogo, cx - dw / 2, cy - dh / 2, dw, dh);
+      ctx.restore(); return true;
+    }
+    ctx.restore(); return false;
+  }
+
   private drawGraphics(ctx: CanvasRenderingContext2D) {
     ctx.textBaseline = "middle";
     this.drawRundown(ctx);
@@ -770,9 +810,14 @@ class StudioEngine {
       roundRectPath(ctx, x, y, w, h, h / 2);
       ctx.fillStyle = "rgba(10,9,8,.9)"; ctx.fill();
       ctx.lineWidth = 2; ctx.strokeStyle = this.brandAccent; ctx.stroke();
-      ctx.fillStyle = this.brandAccent; ctx.font = "700 20px Inter, sans-serif"; ctx.fillText(this.pinned.name.toUpperCase(), x + 34, y + 30);
+      // Source badge (YouTube/Twitch/Facebook/site) so viewers see where the
+      // comment came from - matches the source logos shown in the chat lists.
+      const badgeR = 26, bx = x + 34, by = y + h / 2;
+      const textX = this.drawSourceBadge(ctx, this.pinned.source, bx, by, badgeR) ? bx + badgeR : x + 34;
+      ctx.textAlign = "left";
+      ctx.fillStyle = this.brandAccent; ctx.font = "700 20px Inter, sans-serif"; ctx.fillText(this.pinned.name.toUpperCase(), textX, y + 30);
       ctx.fillStyle = "#F3EFE7"; ctx.font = "400 22px Inter, sans-serif";
-      ctx.fillText(this.pinned.text.slice(0, 46), x + 34, y + 62);
+      ctx.fillText(this.pinned.text.slice(0, 44), textX, y + 62);
     }
     if (this.tipAlert) {
       const { name, amount, message } = this.tipAlert;
@@ -933,7 +978,7 @@ class StudioEngine {
   }
 
   hideBanner() { this.banner = null; this.emit(); }
-  setPinned(name: string, text: string) { this.pinned = { name, text }; this.emit(); }
+  setPinned(name: string, text: string, source?: string) { this.pinned = { name, text, source }; this.emit(); }
   clearPinned() { this.pinned = null; this.emit(); }
   // Pop a tip alert onto the broadcast for a few seconds (auto-clears).
   showTipAlert(name: string, amount: number, message: string) {
