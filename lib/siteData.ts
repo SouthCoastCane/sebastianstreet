@@ -42,7 +42,8 @@ export type Series = {
   href: string;
   by: string;       // host / credit line
   category: string; // two-word slate label, e.g. "Live\nTalk"
-  art: string;      // gradient art-well class: a1..a6
+  art: string;      // gradient art-well class: a1..a6 (fallback when no image)
+  image?: string;   // custom thumbnail (data URL); overrides the gradient art
   visible?: boolean; // shown on the public site (defaults to true when unset)
 };
 
@@ -141,6 +142,25 @@ export type SiteContent = {
   emailBooking: string;
   portrait: string; // About-page portrait image (data URL) or ""
   series: Series[]; // the shows shown across the site (editable in admin)
+
+  // Editable page headings/intros. Each hero title is split into two lines so the
+  // second line can render in the brand accent color (matches the site design).
+  showsEyebrow: string;
+  showsTitle1: string;
+  showsTitle2: string;
+  showsIntro: string;
+
+  libraryEyebrow: string;
+  libraryTitle1: string;
+  libraryTitle2: string;
+  libraryIntro: string;
+
+  aboutEyebrow: string;
+  aboutTitle1: string;
+  aboutTitle2: string;
+  aboutClosingTitle1: string;
+  aboutClosingTitle2: string;
+  aboutClosingText: string;
 };
 
 export const DEFAULT_CONTENT: SiteContent = {
@@ -150,6 +170,23 @@ export const DEFAULT_CONTENT: SiteContent = {
   emailBooking: BRAND.emailBooking,
   portrait: "",
   series: SERIES,
+
+  showsEyebrow: "The slate",
+  showsTitle1: "Five shows.",
+  showsTitle2: "One camera.",
+  showsIntro: "Every production has its own page, its own schedule and its own reminder list. Pick the ones you actually want.",
+
+  libraryEyebrow: "On demand",
+  libraryTitle1: "The",
+  libraryTitle2: "archive",
+  libraryIntro: "The player pulls real uploads from YouTube now; the archive grid fills from our own Cloudflare Stream library as broadcasts are saved.",
+
+  aboutEyebrow: "What's Sebastian Street Studios?",
+  aboutTitle1: "One studio.",
+  aboutTitle2: "Five shows.",
+  aboutClosingTitle1: "Behind every show",
+  aboutClosingTitle2: "is a real voice.",
+  aboutClosingText: "Own the platform, keep the audience. Broadcasts go out live here and on YouTube at the same time, so nobody gets left behind while the home base stays fully ours.",
 };
 
 // Visible series in display order - the single source the public site reads.

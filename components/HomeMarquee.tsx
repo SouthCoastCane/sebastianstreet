@@ -93,7 +93,7 @@ export default function HomeMarquee({
           <div className="peek">
             {peek.map((p) => (
               <div className="peekcard" key={p.key}>
-                <div className={`cimg art ${p.art}`} />
+                <div className={`cimg${p.image ? "" : ` art ${p.art}`}`} style={p.image ? { backgroundImage: `url(${p.image})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined} />
                 <div className="cbar">{p.title}<span>{p.tag}</span></div>
               </div>
             ))}

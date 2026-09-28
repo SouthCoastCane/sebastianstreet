@@ -1,19 +1,18 @@
 import type { Metadata } from "next";
 import LibraryClient from "@/components/LibraryClient";
+import { getSiteConfig } from "@/lib/siteConfig";
 
 export const metadata: Metadata = { title: "Library" };
 
-export default function LibraryPage() {
+export default async function LibraryPage() {
+  const { content } = await getSiteConfig();
   return (
     <>
       <section className="page-hero">
         <div className="wrap">
-          <span className="eyebrow">On demand</span>
-          <h1 className="anton">The<br /><span className="or">archive</span></h1>
-          <p>
-            The player pulls real uploads from YouTube now; the archive grid fills from our own
-            Cloudflare Stream library as broadcasts are saved.
-          </p>
+          <span className="eyebrow">{content.libraryEyebrow}</span>
+          <h1 className="anton">{content.libraryTitle1}<br /><span className="or">{content.libraryTitle2}</span></h1>
+          <p>{content.libraryIntro}</p>
         </div>
       </section>
 

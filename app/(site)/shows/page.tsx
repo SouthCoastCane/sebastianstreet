@@ -18,9 +18,9 @@ export default async function ShowsPage() {
     <>
       <section className="page-hero">
         <div className="wrap">
-          <span className="eyebrow">The slate</span>
-          <h1 className="anton">Five shows.<br /><span className="or">One camera.</span></h1>
-          <p>Every production has its own page, its own schedule and its own reminder list. Pick the ones you actually want.</p>
+          <span className="eyebrow">{content.showsEyebrow}</span>
+          <h1 className="anton">{content.showsTitle1}<br /><span className="or">{content.showsTitle2}</span></h1>
+          <p>{content.showsIntro}</p>
         </div>
       </section>
 
@@ -52,7 +52,7 @@ export default async function ShowsPage() {
           <div className="grid grid-3">
             {series.map((s) => (
               <Link key={s.key} className="tile" href={s.href}>
-                <div className={`timg art ${s.art}`}>
+                <div className={`timg${s.image ? "" : ` art ${s.art}`}`} style={s.image ? { backgroundImage: `url(${s.image})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
                   <span className="lbl">{s.badge}</span>
                 </div>
                 <div className="tb">

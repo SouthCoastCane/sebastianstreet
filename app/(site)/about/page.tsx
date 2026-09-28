@@ -16,8 +16,8 @@ export default async function AboutPage() {
     <>
       <section className="page-hero">
         <div className="wrap">
-          <span className="eyebrow">What&apos;s Sebastian Street Studios?</span>
-          <h1 className="anton">One studio.<br /><span className="or">Five shows.</span></h1>
+          <span className="eyebrow">{content.aboutEyebrow}</span>
+          <h1 className="anton">{content.aboutTitle1}<br /><span className="or">{content.aboutTitle2}</span></h1>
         </div>
       </section>
 
@@ -48,8 +48,8 @@ export default async function AboutPage() {
       <section className="sec">
         <div className="wrap">
           <div className="hostshead">
-            <h2 className="anton big">Behind every show<br /><span className="or">is a real voice.</span></h2>
-            <p>Own the platform, keep the audience. Broadcasts go out live here and on YouTube at the same time, so nobody gets left behind while the home base stays fully ours.</p>
+            <h2 className="anton big">{content.aboutClosingTitle1}<br /><span className="or">{content.aboutClosingTitle2}</span></h2>
+            <p>{content.aboutClosingText}</p>
           </div>
         </div>
       </section>

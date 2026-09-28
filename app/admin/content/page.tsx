@@ -31,8 +31,32 @@ function resizePortrait(file: File): Promise<string> {
   });
 }
 
+// Resize a picked image to a 16:9 cover thumbnail (WebP data URL) small enough
+// to store inline in Firestore, for a series card.
+function resizeThumb(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const W = 640, H = 360;
+        const c = document.createElement("canvas"); c.width = W; c.height = H;
+        const ctx = c.getContext("2d"); if (!ctx) throw new Error("no ctx");
+        const scale = Math.max(W / img.width, H / img.height);
+        const dw = img.width * scale, dh = img.height * scale;
+        ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+        const webp = c.toDataURL("image/webp", 0.82);
+        resolve(webp.startsWith("data:image/webp") ? webp : c.toDataURL("image/jpeg", 0.82));
+      } catch (e) { reject(e); } finally { URL.revokeObjectURL(url); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("bad image")); };
+    img.src = url;
+  });
+}
+
 export default function AdminContent() {
   const [form, setForm] = useState<SiteContent>(DEFAULT_CONTENT);
+  const thumbInput = useRef<HTMLInputElement | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "demo" | "error">("idle");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState(false);
@@ -73,6 +97,12 @@ export default function AdminContent() {
     setSeries(series.map((s, idx) => (idx === i ? { ...s, visible: s.visible === false } : s)));
   }
   function d<K extends keyof Series>(k: K, v: Series[K]) { setDraft((p) => (p ? { ...p, [k]: v } : p)); }
+  async function pickThumb(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; e.target.value = "";
+    if (!file) return;
+    try { d("image", await resizeThumb(file)); }
+    catch { setMessage("Could not read that image."); }
+  }
   function saveDraft() {
     if (editIdx == null || !draft) return;
     const clean: Series = { ...draft, title: draft.title.trim() || "Untitled series" };
@@ -151,6 +181,40 @@ export default function AdminContent() {
               <div className="form-field"><label>Booking email</label><input type="email" value={form.emailBooking} onChange={(e) => set("emailBooking", e.target.value)} /></div>
             </div>
           </div>
+
+          <div className="panel">
+            <h3>Page headings &amp; text</h3>
+            <div className="panel-sub">The words at the top of each page. The big title is on two lines - the second line shows in your accent color.</div>
+
+            <h4 style={{ margin: "18px 0 8px" }}>Shows page</h4>
+            <div className="form-field"><label>Small label (eyebrow)</label><input type="text" value={form.showsEyebrow} onChange={(e) => set("showsEyebrow", e.target.value)} /></div>
+            <div className="panel-split">
+              <div className="form-field"><label>Title - line 1</label><input type="text" value={form.showsTitle1} onChange={(e) => set("showsTitle1", e.target.value)} /></div>
+              <div className="form-field"><label>Title - line 2 (accent)</label><input type="text" value={form.showsTitle2} onChange={(e) => set("showsTitle2", e.target.value)} /></div>
+            </div>
+            <div className="form-field"><label>Intro paragraph</label><textarea style={{ minHeight: 70 }} value={form.showsIntro} onChange={(e) => set("showsIntro", e.target.value)} /></div>
+
+            <h4 style={{ margin: "18px 0 8px" }}>Library / archive page</h4>
+            <div className="form-field"><label>Small label (eyebrow)</label><input type="text" value={form.libraryEyebrow} onChange={(e) => set("libraryEyebrow", e.target.value)} /></div>
+            <div className="panel-split">
+              <div className="form-field"><label>Title - line 1</label><input type="text" value={form.libraryTitle1} onChange={(e) => set("libraryTitle1", e.target.value)} /></div>
+              <div className="form-field"><label>Title - line 2 (accent)</label><input type="text" value={form.libraryTitle2} onChange={(e) => set("libraryTitle2", e.target.value)} /></div>
+            </div>
+            <div className="form-field"><label>Intro paragraph</label><textarea style={{ minHeight: 70 }} value={form.libraryIntro} onChange={(e) => set("libraryIntro", e.target.value)} /></div>
+
+            <h4 style={{ margin: "18px 0 8px" }}>About page</h4>
+            <div className="form-field"><label>Small label (eyebrow)</label><input type="text" value={form.aboutEyebrow} onChange={(e) => set("aboutEyebrow", e.target.value)} /></div>
+            <div className="panel-split">
+              <div className="form-field"><label>Title - line 1</label><input type="text" value={form.aboutTitle1} onChange={(e) => set("aboutTitle1", e.target.value)} /></div>
+              <div className="form-field"><label>Title - line 2 (accent)</label><input type="text" value={form.aboutTitle2} onChange={(e) => set("aboutTitle2", e.target.value)} /></div>
+            </div>
+            <div className="panel-sub" style={{ margin: "8px 0 4px" }}>Closing section (lower on the About page)</div>
+            <div className="panel-split">
+              <div className="form-field"><label>Heading - line 1</label><input type="text" value={form.aboutClosingTitle1} onChange={(e) => set("aboutClosingTitle1", e.target.value)} /></div>
+              <div className="form-field"><label>Heading - line 2 (accent)</label><input type="text" value={form.aboutClosingTitle2} onChange={(e) => set("aboutClosingTitle2", e.target.value)} /></div>
+            </div>
+            <div className="form-field"><label>Closing paragraph</label><textarea style={{ minHeight: 70 }} value={form.aboutClosingText} onChange={(e) => set("aboutClosingText", e.target.value)} /></div>
+          </div>
         </div>
 
         <div>
@@ -200,6 +264,24 @@ export default function AdminContent() {
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560, width: "92%" }}>
             <h3 style={{ marginTop: 0 }}>{editIdx != null && editIdx >= series.length ? "Add series" : "Edit series"}</h3>
             <div className="panel-sub" style={{ marginBottom: 14 }}>These fields show on the home page, Shows page, and footer.</div>
+
+            <div className="form-field">
+              <label>Thumbnail image</label>
+              <input ref={thumbInput} type="file" accept="image/*" hidden onChange={pickThumb} />
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 128, height: 72, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid var(--line)", background: "var(--bg2)" }}>
+                  {draft.image
+                    ? <img src={draft.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : <div className={`timg art ${draft.art}`} style={{ width: "100%", height: "100%" }} />}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn btn-ghost btn-sm" type="button" onClick={() => thumbInput.current?.click()}>{draft.image ? "Replace" : "Upload image"}</button>
+                  {draft.image && <button className="btn btn-ghost btn-sm" type="button" onClick={() => d("image", "")}>Clear</button>}
+                </div>
+              </div>
+              <p className="form-note" style={{ marginTop: 6 }}>Optional. Uploading a photo replaces the color thumbnail. (This only changes the thumbnail on your site, not on YouTube.)</p>
+            </div>
+
             <div className="form-field"><label>Title</label><input type="text" value={draft.title} onChange={(e) => d("title", e.target.value)} placeholder="Show name" /></div>
             <div className="panel-split">
               <div className="form-field"><label>Tag (small label)</label><input type="text" value={draft.tag} onChange={(e) => d("tag", e.target.value)} placeholder="Flagship" /></div>
@@ -212,7 +294,7 @@ export default function AdminContent() {
             </div>
             <div className="panel-split">
               <div className="form-field">
-                <label>Thumbnail color</label>
+                <label>Thumbnail color (used if no image)</label>
                 <select value={draft.art} onChange={(e) => d("art", e.target.value)}>
                   {ART_OPTIONS.map((a, i) => <option key={a} value={a}>{`Style ${i + 1}`}</option>)}
                 </select>
