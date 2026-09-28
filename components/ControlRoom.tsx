@@ -112,7 +112,10 @@ export default function ControlRoom() {
   const [sessionCost, setSessionCost] = useState(0);
   const [liveDelivery, setLiveDelivery] = useState<"own" | "youtube">("own");
   const [ytChannelId, setYtChannelId] = useState(PRIMARY_CHANNEL.channelId);
-  const [ytLiveUrl, setYtLiveUrl] = useState(""); // optional per-broadcast link for Unlisted streams
+  const [ytLiveUrl, setYtLiveUrl] = useState(""); // ACTIVE link the poller uses (Unlisted streams)
+  const [ytLiveDraft, setYtLiveDraft] = useState(""); // what's typed in the box before Save
+  const [ytLiveStatus, setYtLiveStatus] = useState<"idle" | "checking" | "live" | "offline">("idle");
+  const [ytLinkMsg, setYtLinkMsg] = useState("");
   const [twitchChannel, setTwitchChannel] = useState("");
   const [activeCam, setActiveCam] = useState("");
   const [rundown, setRundown] = useState<RundownCfg>({ enabled: false, title: "RUNDOWN", showTimer: true, activeIndex: 0, items: [] });
@@ -585,7 +588,16 @@ export default function ControlRoom() {
   };
 
   // Remember the (optional) Unlisted live link across refreshes during a show.
-  useEffect(() => { try { const v = localStorage.getItem("ssyt-liveurl"); if (v) setYtLiveUrl(v); } catch {} }, []);
+  useEffect(() => { try { const v = localStorage.getItem("ssyt-liveurl"); if (v) { setYtLiveUrl(v); setYtLiveDraft(v); } } catch {} }, []);
+
+  // Save the pasted link so the poller picks it up (and we can show it "took").
+  function saveYtLink() {
+    const v = ytLiveDraft.trim();
+    setYtLiveUrl(v);
+    try { v ? localStorage.setItem("ssyt-liveurl", v) : localStorage.removeItem("ssyt-liveurl"); } catch {}
+    setYtLiveStatus(v || broadcast.live ? "checking" : "idle");
+    setYtLinkMsg(v ? "Saved - watching this stream's chat." : "Cleared.");
+  }
 
   // Merge YouTube live chat. Polls a server route (keeps the API key server-side)
   // at YouTube's recommended interval; the backlog on the first pass is skipped
@@ -593,7 +605,8 @@ export default function ControlRoom() {
   // OR whenever a live link is pasted - so chat merges even for a YouTube-native
   // stream (or while testing) without needing the platform Go Live to be on air.
   useEffect(() => {
-    if (!broadcast.live && !ytLiveUrl) return;
+    if (!broadcast.live && !ytLiveUrl) { setYtLiveStatus("idle"); return; }
+    setYtLiveStatus("checking");
     let stop = false, liveChatId = "", pageToken = "", firstPass = true;
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
@@ -610,6 +623,7 @@ export default function ControlRoom() {
         const d = await r.json();
         if (d.live && d.liveChatId) {
           liveChatId = d.liveChatId;
+          if (!stop) setYtLiveStatus("live");
           if (!firstPass && Array.isArray(d.messages)) {
             for (const m of d.messages) injectChat({ name: m.name, text: m.text, source: "youtube", extId: "yt_" + m.id });
           }
@@ -618,8 +632,9 @@ export default function ControlRoom() {
           firstPass = false;
         } else {
           liveChatId = ""; pageToken = ""; firstPass = true; delay = 12000; // not live yet / ended
+          if (!stop) setYtLiveStatus("offline");
         }
-      } catch { delay = 12000; }
+      } catch { delay = 12000; if (!stop) setYtLiveStatus("offline"); }
       if (!stop) timer = setTimeout(poll, delay);
     }
     poll();
@@ -892,17 +907,38 @@ export default function ControlRoom() {
 
               {/* YouTube chat pull-in: Public auto-detects; Unlisted needs the link; Private can't be read. */}
               <div className="form-field" style={{ marginTop: 12 }}>
-                <label>YouTube live link (only needed for Unlisted streams)</label>
-                <input
-                  type="text"
-                  value={ytLiveUrl}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  maxLength={200}
-                  onChange={(e) => { const v = e.target.value; setYtLiveUrl(v); try { v ? localStorage.setItem("ssyt-liveurl", v) : localStorage.removeItem("ssyt-liveurl"); } catch {} }}
-                  style={{ background: "var(--bg2)", border: "1px solid var(--line)", color: "var(--cream)", borderRadius: 8, padding: "9px 12px", font: "inherit", fontSize: 13, width: "100%" }}
-                />
+                <label style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span>YouTube live link (only needed for Unlisted streams)</span>
+                  {(() => {
+                    const map = {
+                      idle: { t: "Not connected", c: "var(--mute)", d: "var(--mute)" },
+                      checking: { t: "Checking...", c: "var(--accent)", d: "var(--accent)" },
+                      live: { t: "Live - chat connected", c: "#39d98a", d: "#39d98a" },
+                      offline: { t: "Not live", c: "var(--live)", d: "var(--live)" },
+                    } as const;
+                    const s = map[ytLiveStatus];
+                    return (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 600, color: s.c, border: `1px solid ${s.c}`, borderRadius: 999, padding: "2px 9px" }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.d }} />{s.t}
+                      </span>
+                    );
+                  })()}
+                </label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    type="text"
+                    value={ytLiveDraft}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    maxLength={200}
+                    onChange={(e) => setYtLiveDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveYtLink(); } }}
+                    style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--line)", color: "var(--cream)", borderRadius: 8, padding: "9px 12px", font: "inherit", fontSize: 13 }}
+                  />
+                  <button className="btn btn-primary btn-sm" type="button" onClick={saveYtLink} disabled={ytLiveDraft.trim() === ytLiveUrl.trim()}>Save</button>
+                </div>
+                {ytLinkMsg && <p className="form-ok" style={{ margin: "6px 0 0", fontSize: 12.5 }}>{ytLinkMsg}</p>}
                 <p className="form-note" style={{ marginTop: 6 }}>
-                  <b>Public</b> streams pull chat in automatically (a couple of minutes after going live). <b>Unlisted</b> streams aren&apos;t searchable - paste the live video link here to pull their chat instantly. <b>Private</b> streams can&apos;t be read by YouTube&apos;s API, so set the broadcast to Public or Unlisted to merge its chat.
+                  <b>Public</b> streams pull chat in automatically (a couple of minutes after going live). <b>Unlisted</b> streams aren&apos;t searchable - paste the live video link here and click <b>Save</b> to pull their chat instantly. <b>Private</b> streams can&apos;t be read by YouTube&apos;s API, so set the broadcast to Public or Unlisted to merge its chat.
                 </p>
               </div>
               {modMsg && <p className="form-ok" style={{ fontSize: "12.5px", marginBottom: 10 }}>{modMsg}</p>}

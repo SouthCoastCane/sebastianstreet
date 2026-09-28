@@ -384,7 +384,7 @@ export default function GuestJoinPage() {
                 <div>
                   <h3 style={{ margin: 0 }}>Background</h3>
                   <div className="panel-sub" style={{ marginBottom: 0 }}>
-                    Runs on your device.{bgMode !== "off" && !bgReady ? " Loading the AI model..." : ""}
+                    Runs on your device - everyone in the show sees it.{bgMode !== "off" && !bgReady ? " Loading the AI model..." : ""}
                   </div>
                 </div>
               </div>
