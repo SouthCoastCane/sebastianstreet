@@ -16,6 +16,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const { role } = useAdminRole();
   const nav = navForRole(role);
   const [brand, setBrand] = useState<{ name: string; logo: string }>({ name: BRAND.name, logo: "" });
+  const [navOpen, setNavOpen] = useState(false);
 
   // Reflect the saved branding (uploaded logo + site name) in the sidebar.
   useEffect(() => {
@@ -23,6 +24,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       .then((cfg) => { if (cfg?.branding) setBrand({ name: cfg.branding.siteName || BRAND.name, logo: cfg.branding.logo || "" }); })
       .catch(() => {});
   }, []);
+
+  // Close the mobile nav drawer whenever the route changes.
+  useEffect(() => { setNavOpen(false); }, [pathname]);
 
   async function handleSignOut() {
     const auth = getFirebaseAuth();
@@ -32,7 +36,18 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="admin">
-      <aside className="admin-side">
+      {/* Mobile top bar - only shows on phones/small tablets. */}
+      <div className="admin-mobile-bar">
+        <div className="admin-brand" style={{ padding: 0, border: 0, margin: 0 }}>
+          {brand.logo ? <img src={brand.logo} alt={brand.name} className="brand-mark-img" /> : <span className="brand-mark">SC</span>}
+          <span className="brand-name" style={{ fontSize: 15 }}>{brand.name}</span>
+        </div>
+        <button className="admin-burger" type="button" aria-label="Menu" aria-expanded={navOpen} onClick={() => setNavOpen((v) => !v)}>
+          <span /><span /><span />
+        </button>
+      </div>
+      {navOpen && <div className="admin-backdrop" onClick={() => setNavOpen(false)} />}
+      <aside className={`admin-side${navOpen ? " open" : ""}`}>
         <div className="admin-brand">
           {brand.logo ? (
             <img src={brand.logo} alt={brand.name} className="brand-mark-img" />

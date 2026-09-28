@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getIdToken } from "@/lib/firebase";
+import { getIdToken, getFirebaseAuth } from "@/lib/firebase";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { saveSection, loadConfig } from "@/lib/saveSection";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -28,6 +29,31 @@ export default function AdminSettings() {
   const [ytSaving, setYtSaving] = useState(false);
   const [ytMsg, setYtMsg] = useState("");
   const [twitch, setTwitch] = useState("");
+  const [accountEmail, setAccountEmail] = useState("");
+  const [pwMsg, setPwMsg] = useState("");
+
+  // Show the actually signed-in admin's email (not a hardcoded one).
+  useEffect(() => {
+    const auth = getFirebaseAuth();
+    if (!auth) return;
+    setAccountEmail(auth.currentUser?.email || "");
+    const unsub = auth.onAuthStateChanged((u) => setAccountEmail(u?.email || ""));
+    return () => unsub();
+  }, []);
+
+  // "Change password" sends a secure reset link to the signed-in email.
+  async function changePassword() {
+    setPwMsg("");
+    const auth = getFirebaseAuth();
+    const email = auth?.currentUser?.email || accountEmail;
+    if (!auth || !email) { setPwMsg("Sign in first to change your password."); return; }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setPwMsg(`Password reset link sent to ${email}. Check your inbox.`);
+    } catch (e: any) {
+      setPwMsg(e?.message || "Could not send the reset email.");
+    }
+  }
   const [twSaving, setTwSaving] = useState(false);
   const [twMsg, setTwMsg] = useState("");
 
@@ -246,8 +272,9 @@ export default function AdminSettings() {
           <div className="panel">
             <h3>Account</h3>
             <div className="panel-sub">Your Studio sign-in.</div>
-            <div className="form-field"><label>Email</label><input type="email" defaultValue="southcoastcane@gmail.com" /></div>
-            <button className="btn btn-ghost btn-sm" type="button">Change password</button>
+            <div className="form-field"><label>Email</label><input type="email" value={accountEmail} readOnly placeholder="Not signed in" /></div>
+            <button className="btn btn-ghost btn-sm" type="button" onClick={changePassword}>Change password</button>
+            {pwMsg && <p className="form-note" style={{ marginTop: 10 }}>{pwMsg}</p>}
           </div>
         </div>
       </div>
