@@ -1,13 +1,16 @@
 import Link from "next/link";
-import { BRAND, SERIES } from "@/lib/siteData";
+import { BRAND, SERIES, visibleSeries, type Series } from "@/lib/siteData";
 import { CHANNELS } from "@/lib/channels";
 
 export default function SiteFooter({
   brand = { name: BRAND.name, tagline: BRAND.tagline },
+  series = SERIES,
 }: {
   brand?: { name: string; tagline: string };
+  series?: Series[];
 }) {
   const year = new Date().getFullYear();
+  const shows = visibleSeries(series);
   return (
     <footer className="foot">
       <div className="wrap">
@@ -27,7 +30,7 @@ export default function SiteFooter({
           </div>
           <div className="footcol">
             <h4>Shows</h4>
-            {SERIES.map((s) => (
+            {shows.map((s) => (
               <Link key={s.key} href={s.href}>{s.title}</Link>
             ))}
           </div>

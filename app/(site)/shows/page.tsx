@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SERIES } from "@/lib/siteData";
+import { visibleSeries } from "@/lib/siteData";
 import { getSiteConfig } from "@/lib/siteConfig";
 import Countdown from "@/components/Countdown";
 
 export const metadata: Metadata = { title: "Shows" };
 
 export default async function ShowsPage() {
-  const { schedule } = await getSiteConfig();
+  const { schedule, content } = await getSiteConfig();
+  const series = visibleSeries(content.series);
   // Only broadcasts still in the future, soonest first.
   const upcoming = [...schedule]
     .sort((a, b) => (a.startsAt ?? 0) - (b.startsAt ?? 0))
@@ -49,7 +50,7 @@ export default async function ShowsPage() {
       <section className="sec" style={{ paddingTop: 56 }}>
         <div className="wrap">
           <div className="grid grid-3">
-            {SERIES.map((s) => (
+            {series.map((s) => (
               <Link key={s.key} className="tile" href={s.href}>
                 <div className={`timg art ${s.art}`}>
                   <span className="lbl">{s.badge}</span>

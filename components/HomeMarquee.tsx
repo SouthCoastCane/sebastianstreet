@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { SERIES } from "@/lib/siteData";
+import { SERIES, type Series } from "@/lib/siteData";
 import HomeBackdrop from "@/components/HomeBackdrop";
 import Countdown from "@/components/Countdown";
 
@@ -16,11 +16,13 @@ const pad = (n: number) => String(n).padStart(2, "0");
 export default function HomeMarquee({
   live,
   schedule = [],
+  series,
 }: {
   live: { live: boolean; viewers: number | null } | null;
   schedule?: Show[];
+  series?: Series[];
 }) {
-  const shows = SERIES;
+  const shows = series && series.length ? series : SERIES;
   const n = shows.length;
   const [i, setI] = useState(0);
   const s = shows[i];

@@ -43,6 +43,7 @@ export type Series = {
   by: string;       // host / credit line
   category: string; // two-word slate label, e.g. "Live\nTalk"
   art: string;      // gradient art-well class: a1..a6
+  visible?: boolean; // shown on the public site (defaults to true when unset)
 };
 
 export const SERIES: Series[] = [
@@ -139,6 +140,7 @@ export type SiteContent = {
   emailGeneral: string;
   emailBooking: string;
   portrait: string; // About-page portrait image (data URL) or ""
+  series: Series[]; // the shows shown across the site (editable in admin)
 };
 
 export const DEFAULT_CONTENT: SiteContent = {
@@ -147,7 +149,15 @@ export const DEFAULT_CONTENT: SiteContent = {
   emailGeneral: BRAND.emailGeneral,
   emailBooking: BRAND.emailBooking,
   portrait: "",
+  series: SERIES,
 };
+
+// Visible series in display order - the single source the public site reads.
+// Treats an unset `visible` as visible (so older saved data still shows).
+export function visibleSeries(list?: Series[] | null): Series[] {
+  const arr = Array.isArray(list) && list.length ? list : SERIES;
+  return arr.filter((s) => s.visible !== false);
+}
 
 export type SiteBranding = {
   siteName: string;

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SERIES, DEFAULT_CONTENT, type SiteContent } from "@/lib/siteData";
+import { SERIES, DEFAULT_CONTENT, type SiteContent, type Series } from "@/lib/siteData";
 import { CHANNELS } from "@/lib/channels";
 import { saveSection, loadConfig } from "@/lib/saveSection";
 import PreviewSiteModal from "@/components/PreviewSiteModal";
+
+const ART_OPTIONS = ["a1", "a2", "a3", "a4", "a5", "a6"];
 
 // Resize a picked image to a 600x600 cover portrait (WebP data URL) so it stays
 // small enough to store inline in Firestore.
@@ -51,6 +53,31 @@ export default function AdminContent() {
 
   function set<K extends keyof SiteContent>(key: K, value: SiteContent[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  // ---- Series editing ----
+  const series = form.series ?? SERIES;
+  const [editIdx, setEditIdx] = useState<number | null>(null);
+  const [draft, setDraft] = useState<Series | null>(null);
+  function setSeries(next: Series[]) { set("series", next); }
+  function openEdit(i: number) { setEditIdx(i); setDraft({ ...series[i] }); }
+  function openAdd() {
+    setEditIdx(series.length); // one past the end marks a brand-new series
+    setDraft({ key: "series-" + Date.now(), title: "", tag: "", badge: "", blurb: "", href: "/library", by: "", category: "", art: "a1", visible: true });
+  }
+  function removeSeries(i: number) {
+    if (!confirm("Remove this series from the site?")) return;
+    setSeries(series.filter((_, idx) => idx !== i));
+  }
+  function toggleVisible(i: number) {
+    setSeries(series.map((s, idx) => (idx === i ? { ...s, visible: s.visible === false } : s)));
+  }
+  function d<K extends keyof Series>(k: K, v: Series[K]) { setDraft((p) => (p ? { ...p, [k]: v } : p)); }
+  function saveDraft() {
+    if (editIdx == null || !draft) return;
+    const clean: Series = { ...draft, title: draft.title.trim() || "Untitled series" };
+    setSeries(editIdx >= series.length ? [...series, clean] : series.map((s, idx) => (idx === editIdx ? clean : s)));
+    setEditIdx(null); setDraft(null);
   }
 
   async function save() {
@@ -129,22 +156,30 @@ export default function AdminContent() {
         <div>
           <div className="panel">
             <h3>Series</h3>
-            <div className="panel-sub">The shows that appear across the site.</div>
+            <div className="panel-sub">The shows that appear across the site. Edits go live when you click Save changes.</div>
             <div className="panel" style={{ padding: "8px 8px 0", marginBottom: 16, background: "var(--bg-elevated)" }}>
               <table className="data">
                 <thead><tr><th>Series</th><th>Status</th><th></th></tr></thead>
                 <tbody>
-                  {SERIES.map((s) => (
-                    <tr key={s.key}>
+                  {series.map((s, i) => (
+                    <tr key={s.key || i}>
                       <td><div className="vt" style={{ fontWeight: 600 }}>{s.title}</div><div className="vs" style={{ color: "var(--text-dim)", fontSize: ".8rem" }}>{s.tag}</div></td>
-                      <td><span className="pill published">Visible</span></td>
-                      <td className="row-actions"><a>Edit</a></td>
+                      <td>
+                        <button type="button" className={`pill ${s.visible === false ? "" : "published"}`} style={{ cursor: "pointer", border: "none" }} onClick={() => toggleVisible(i)} title="Click to toggle">
+                          {s.visible === false ? "Hidden" : "Visible"}
+                        </button>
+                      </td>
+                      <td className="row-actions" style={{ whiteSpace: "nowrap" }}>
+                        <a style={{ cursor: "pointer" }} onClick={() => openEdit(i)}>Edit</a>
+                        <a style={{ cursor: "pointer", marginLeft: 12, color: "var(--live)" }} onClick={() => removeSeries(i)}>Remove</a>
+                      </td>
                     </tr>
                   ))}
+                  {series.length === 0 && <tr><td colSpan={3} style={{ color: "var(--text-dim)" }}>No series yet. Add one below.</td></tr>}
                 </tbody>
               </table>
             </div>
-            <button className="btn btn-ghost btn-sm" type="button" style={{ width: "100%", justifyContent: "center" }}>Add series</button>
+            <button className="btn btn-ghost btn-sm" type="button" style={{ width: "100%", justifyContent: "center" }} onClick={openAdd}>Add series</button>
           </div>
 
           <div className="panel">
@@ -159,6 +194,45 @@ export default function AdminContent() {
           </div>
         </div>
       </div>
+
+      {draft && (
+        <div className="modal-backdrop" onClick={() => { setEditIdx(null); setDraft(null); }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560, width: "92%" }}>
+            <h3 style={{ marginTop: 0 }}>{editIdx != null && editIdx >= series.length ? "Add series" : "Edit series"}</h3>
+            <div className="panel-sub" style={{ marginBottom: 14 }}>These fields show on the home page, Shows page, and footer.</div>
+            <div className="form-field"><label>Title</label><input type="text" value={draft.title} onChange={(e) => d("title", e.target.value)} placeholder="Show name" /></div>
+            <div className="panel-split">
+              <div className="form-field"><label>Tag (small label)</label><input type="text" value={draft.tag} onChange={(e) => d("tag", e.target.value)} placeholder="Flagship" /></div>
+              <div className="form-field"><label>Badge (on the thumbnail)</label><input type="text" value={draft.badge} onChange={(e) => d("badge", e.target.value)} placeholder="Live talk" /></div>
+            </div>
+            <div className="form-field"><label>Blurb</label><textarea style={{ minHeight: 90 }} value={draft.blurb} onChange={(e) => d("blurb", e.target.value)} placeholder="Short description shown under the title." /></div>
+            <div className="panel-split">
+              <div className="form-field"><label>Credit line (by)</label><input type="text" value={draft.by} onChange={(e) => d("by", e.target.value)} placeholder="Sebastian Street Studios" /></div>
+              <div className="form-field"><label>Link</label><input type="text" value={draft.href} onChange={(e) => d("href", e.target.value)} placeholder="/library" /></div>
+            </div>
+            <div className="panel-split">
+              <div className="form-field">
+                <label>Thumbnail color</label>
+                <select value={draft.art} onChange={(e) => d("art", e.target.value)}>
+                  {ART_OPTIONS.map((a, i) => <option key={a} value={a}>{`Style ${i + 1}`}</option>)}
+                </select>
+              </div>
+              <div className="form-field">
+                <label>Visibility</label>
+                <label className="check-row" style={{ marginTop: 6 }}>
+                  <input type="checkbox" checked={draft.visible !== false} onChange={(e) => d("visible", e.target.checked)} />
+                  <span>Show on the public site</span>
+                </label>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
+              <button className="btn btn-ghost btn-sm" type="button" onClick={() => { setEditIdx(null); setDraft(null); }}>Cancel</button>
+              <button className="btn btn-primary btn-sm" type="button" onClick={saveDraft}>Done</button>
+            </div>
+            <p className="form-note" style={{ marginTop: 12 }}>Click <strong>Done</strong> here, then <strong>Save changes</strong> at the top to publish.</p>
+          </div>
+        </div>
+      )}
     </>
   );
 }
