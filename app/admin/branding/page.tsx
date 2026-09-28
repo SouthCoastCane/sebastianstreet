@@ -163,7 +163,10 @@ export default function AdminBranding() {
               <div className="form-field"><label>Site name</label><input type="text" value={form.siteName} onChange={(e) => set("siteName", e.target.value)} /></div>
               <div className="form-field"><label>Tagline</label><input type="text" value={form.tagline} onChange={(e) => set("tagline", e.target.value)} /></div>
             </div>
-            <div className="form-field"><label>Domain</label><input type="text" value={form.domain} onChange={(e) => set("domain", e.target.value)} /></div>
+            <div className="panel-split">
+              <div className="form-field"><label>Domain</label><input type="text" value={form.domain} onChange={(e) => set("domain", e.target.value)} /></div>
+              <div className="form-field"><label>Host name</label><input type="text" value={form.hostName} placeholder="Host" onChange={(e) => set("hostName", e.target.value)} /><p className="form-note" style={{ marginTop: 4 }}>Shown on your camera tile, in chat, and to guests.</p></div>
+            </div>
           </div>
 
           <div className="panel">

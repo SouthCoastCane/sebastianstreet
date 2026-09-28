@@ -117,6 +117,7 @@ export default function LiveChat({ asGuest }: { asGuest?: string } = {}) {
   const [tipSecret, setTipSecret] = useState<string | null>(null); // open modal when set
   const [tipsOn, setTipsOn] = useState(true); // host can hide tips (branding.tipsEnabled)
   const [siteLogo, setSiteLogo] = useState(""); // shown as the badge on site messages
+  const [hostName, setHostName] = useState(HOST); // host display name (for host styling)
 
   const wsRef = useRef<WebSocket | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
@@ -128,7 +129,7 @@ export default function LiveChat({ asGuest }: { asGuest?: string } = {}) {
   useEffect(() => {
     fetch("/api/site-config", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => { if (d?.branding) { setTipsOn(d.branding.tipsEnabled !== false); setSiteLogo(d.branding.logo || ""); } })
+      .then((d) => { if (d?.branding) { setTipsOn(d.branding.tipsEnabled !== false); setSiteLogo(d.branding.logo || ""); if (d.branding.hostName) setHostName(d.branding.hostName); } })
       .catch(() => {});
   }, []);
 
@@ -314,7 +315,7 @@ export default function LiveChat({ asGuest }: { asGuest?: string } = {}) {
               <span className="tipamt">${m.tip.toFixed(2)}</span><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}
             </div>
           ) : (
-            <div className={`msg${m.name === HOST ? " is-host" : ""}`} key={m.id}>
+            <div className={`msg${m.name === hostName ? " is-host" : ""}`} key={m.id}>
               <SourceBadge source={m.source} logo={siteLogo} /><b>{m.name}</b>{linkify(m.text)}
             </div>
           )

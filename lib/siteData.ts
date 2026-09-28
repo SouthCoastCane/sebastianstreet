@@ -164,6 +164,7 @@ export type SiteBranding = {
   liveDelivery: "own" | "youtube"; // site player: own Cloudflare (paid) or free YouTube embed
   youtubeChannelId: string; // the channel the live embed + "Watch on YouTube" point at
   twitchChannel: string; // twitch username to merge chat from (blank = off)
+  hostName: string; // display name for the host (on the tile, in chat, guest roster)
 };
 
 export const DEFAULT_BRANDING: SiteBranding = {
@@ -182,6 +183,7 @@ export const DEFAULT_BRANDING: SiteBranding = {
   // Falls back to the app's primary channel until a client pastes their own.
   youtubeChannelId: "UC_HAwaQ2BKMPGClxLv9UXvw",
   twitchChannel: "",
+  hostName: "Host",
 };
 
 // Branded "scene": background behind the host, optional green-screen removal,

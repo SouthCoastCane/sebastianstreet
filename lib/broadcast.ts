@@ -388,6 +388,20 @@ class StudioEngine {
   // The brand logo to show on the "Camera off" card (from branding config).
   setBrandLogo(url: string) { this.brandLogo = url ? this.loadImg(url) : null; }
   setBrandAccent(color: string) { this.brandAccent = color || "#F5A524"; }
+  // The host's display name (tile label, chat, guest roster). Re-announces to the
+  // room so a change shows up for guests immediately.
+  setHostName(name: string) {
+    const n = (name || "").trim() || "Host";
+    if (n === this.hostName) return;
+    this.hostName = n;
+    try {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        const me: Participant = { id: "host", name: n, role: "host", sessionId: this.rtc?.sessionId, hasVideo: true, hasAudio: true };
+        this.ws.send(JSON.stringify({ type: "studio", action: "update", participant: me }));
+      }
+    } catch {}
+    this.emit();
+  }
   setHostZoom(z: number) { this.hostZoom = Math.max(1, Math.min(3, z)); this.emit(); }
 
   // Read the webcam's optical/digital zoom range (if any) so the UI can offer a
@@ -1558,7 +1572,7 @@ class StudioEngine {
     try { this.ws?.close(); } catch { /* none */ }
     const sock = new WebSocket(`${WS_BASE}/room/${SIGNAL_ROOM}/ws`);
     this.ws = sock;
-    const me: Participant = { id: "host", name: "Sebastian Street Studios", role: "host", sessionId: this.rtc?.sessionId, hasVideo: true, hasAudio: true };
+    const me: Participant = { id: "host", name: this.hostName, role: "host", sessionId: this.rtc?.sessionId, hasVideo: true, hasAudio: true };
     sock.onopen = () => sock.send(JSON.stringify({ type: "studio", action: "join", participant: me }));
     // On reload/close, tell the room the host left so no stale "host" lingers
     // (a ghost host session is one thing that makes a guest's video freeze).

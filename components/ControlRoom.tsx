@@ -93,6 +93,7 @@ export default function ControlRoom() {
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [chatDraft, setChatDraft] = useState("");
   const [siteLogo, setSiteLogo] = useState(""); // brand logo, shown as the site badge in chat
+  const [hostName, setHostNameState] = useState("Host"); // host display name (tile + chat)
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [reveal, setReveal] = useState(false);
@@ -194,6 +195,7 @@ export default function ControlRoom() {
         if (d?.branding?.liveDelivery) setLiveDelivery(d.branding.liveDelivery);
         if (d?.branding?.youtubeChannelId) setYtChannelId(d.branding.youtubeChannelId);
         if (d?.branding?.twitchChannel !== undefined) setTwitchChannel(d.branding.twitchChannel || "");
+        if (d?.branding?.hostName) { broadcast.setHostName(d.branding.hostName); setHostNameState(d.branding.hostName); }
         if (d?.scene) { const sc = { tickerOn: false, tickerLabel: "", ticker: "", ...d.scene }; setScene(sc); broadcast.setScene(sc); }
         if (d?.bumper) { const bm = { enabled: false, mode: "card", headline: "Starting soon", subtext: "", background: "", videoUrl: "", startsAt: 0, ...d.bumper } as BumperCfg; setBumper(bm); broadcast.setBumper(bm); }
         if (d?.rundown) { const rn = { enabled: false, title: "RUNDOWN", showTimer: true, activeIndex: 0, items: [], ...d.rundown } as RundownCfg; rn.items = (rn.items || []).map((it: any) => ({ title: it?.title ?? "", image: it?.image ?? "", seconds: Number(it?.seconds) || 0 })); setRundown(rn); broadcast.setRundown(rn); }
@@ -569,7 +571,7 @@ export default function ControlRoom() {
     const text = chatDraft.trim();
     const cw = chatWs.current;
     if (!text || !cw || cw.readyState !== WebSocket.OPEN) return;
-    cw.send(JSON.stringify({ type: "chat", name: "Sebastian Street Studios", text, uid: "" }));
+    cw.send(JSON.stringify({ type: "chat", name: hostName, text, uid: "" }));
     setChatDraft("");
   };
   const unpin = () => { broadcast.clearPinned(); pushOverlay({ action: "hideComment" }); };
