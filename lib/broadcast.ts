@@ -266,6 +266,15 @@ class StudioEngine {
         const senders = this.pc.getSenders();
         next.getAudioTracks().forEach((track) => { const s = senders.find((x) => x.track?.kind === "audio"); if (s) s.replaceTrack(track); });
       }
+      // Also swap the tracks published to the guest-studio SFU, so guests always
+      // see/hear the CURRENT camera+mic. Without this, switching cameras (or
+      // starting on a black "OBS Virtual Camera") leaves guests on a stale/black
+      // feed because the old track was stopped below.
+      if (this.rtc?.pc) {
+        const rs = this.rtc.pc.getSenders();
+        next.getVideoTracks().forEach((track) => { const s = rs.find((x) => x.track?.kind === "video"); if (s) s.replaceTrack(track).catch(() => {}); });
+        next.getAudioTracks().forEach((track) => { const s = rs.find((x) => x.track?.kind === "audio"); if (s) s.replaceTrack(track).catch(() => {}); });
+      }
       this.hostStream?.getTracks().forEach((t) => t.stop());
       this.hostStream = next;
       this.readCamZoom(next.getVideoTracks()[0]);
