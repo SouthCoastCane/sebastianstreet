@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { visibleSeries } from "@/lib/siteData";
+import { visibleSeries, normalizeHref } from "@/lib/siteData";
 import { getSiteConfig } from "@/lib/siteConfig";
 import Countdown from "@/components/Countdown";
 
@@ -50,17 +50,25 @@ export default async function ShowsPage() {
       <section className="sec" style={{ paddingTop: 56 }}>
         <div className="wrap">
           <div className="grid grid-3">
-            {series.map((s) => (
-              <Link key={s.key} className="tile" href={s.href}>
-                <div className={`timg${s.image ? "" : ` art ${s.art}`}`} style={s.image ? { backgroundImage: `url(${s.image})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
-                  <span className="lbl">{s.badge}</span>
-                </div>
-                <div className="tb">
-                  <h3>{s.title}</h3>
-                  <p>{s.blurb}</p>
-                </div>
-              </Link>
-            ))}
+            {series.map((s) => {
+              const link = normalizeHref(s.href);
+              const inner = (
+                <>
+                  <div className={`timg${s.image ? "" : ` art ${s.art}`}`} style={s.image ? { backgroundImage: `url(${s.image})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+                    <span className="lbl">{s.badge}</span>
+                  </div>
+                  <div className="tb">
+                    <h3>{s.title}</h3>
+                    <p>{s.blurb}</p>
+                  </div>
+                </>
+              );
+              return link.external ? (
+                <a key={s.key} className="tile" href={link.url} target="_blank" rel="noopener noreferrer">{inner}</a>
+              ) : (
+                <Link key={s.key} className="tile" href={link.url}>{inner}</Link>
+              );
+            })}
             <Link className="tile" href="/library">
               <div className="timg art a1"><span className="lbl">Archive</span></div>
               <div className="tb">

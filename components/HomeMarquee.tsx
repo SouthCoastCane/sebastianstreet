@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { SERIES, type Series } from "@/lib/siteData";
+import { SERIES, normalizeHref, type Series } from "@/lib/siteData";
 import HomeBackdrop from "@/components/HomeBackdrop";
 import Countdown from "@/components/Countdown";
 
@@ -69,7 +69,12 @@ export default function HomeMarquee({
             </div>
             <div className="cta">
               <Link className="b1" href="/live"><Play />{isLive ? "Watch live" : "Go to live"}</Link>
-              <Link className="b2" href={s.href}>See the show</Link>
+              {(() => {
+                const link = normalizeHref(s.href);
+                return link.external
+                  ? <a className="b2" href={link.url} target="_blank" rel="noopener noreferrer">See the show</a>
+                  : <Link className="b2" href={link.url}>See the show</Link>;
+              })()}
             </div>
             {!isLive && nextShow && (
               <Link href="/live" className="nextcard">

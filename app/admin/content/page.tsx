@@ -342,8 +342,9 @@ export default function AdminContent() {
             <div className="form-field"><label>Blurb</label><textarea style={{ minHeight: 90 }} value={draft.blurb} onChange={(e) => d("blurb", e.target.value)} placeholder="Short description shown under the title." /></div>
             <div className="panel-split">
               <div className="form-field"><label>Credit line (by)</label><input type="text" value={draft.by} onChange={(e) => d("by", e.target.value)} placeholder="Sebastian Street Studios" /></div>
-              <div className="form-field"><label>Link</label><input type="text" value={draft.href} onChange={(e) => d("href", e.target.value)} placeholder="/library" /></div>
+              <div className="form-field"><label>Link (where clicking the show goes)</label><input type="text" value={draft.href} onChange={(e) => d("href", e.target.value)} placeholder="/live" /></div>
             </div>
+            <p className="form-note" style={{ marginTop: -6 }}>Use a site page like <strong>/live</strong> or <strong>/library</strong>, or a full web address starting with <strong>https://</strong> (e.g. a YouTube channel) to open it in a new tab.</p>
             <div className="panel-split">
               <div className="form-field">
                 <label>Thumbnail color (used if no image)</label>

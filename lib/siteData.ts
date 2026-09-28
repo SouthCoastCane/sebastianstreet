@@ -196,6 +196,20 @@ export function visibleSeries(list?: Series[] | null): Series[] {
   return arr.filter((s) => s.visible !== false);
 }
 
+// Turn a series' Link field into a safe destination. Handles three cases the
+// non-technical admin might enter: an internal page ("/live"), a full URL
+// ("https://youtube.com/..."), or a bare domain ("youtube.com/@x") - which we
+// promote to https:// so it doesn't 404 as a same-site path.
+export function normalizeHref(href: string): { url: string; external: boolean } {
+  const h = (href || "").trim();
+  if (!h) return { url: "/", external: false };
+  if (/^https?:\/\//i.test(h)) return { url: h, external: true };
+  if (h.startsWith("/")) return { url: h, external: false };
+  // Bare domain (a dot appears before any slash) -> treat as an external site.
+  if (/^[^/\s]+\.[^/\s]/.test(h)) return { url: "https://" + h, external: true };
+  return { url: "/" + h.replace(/^\/+/, ""), external: false };
+}
+
 export type SiteBranding = {
   siteName: string;
   tagline: string;

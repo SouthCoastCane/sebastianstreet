@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BRAND, SERIES, visibleSeries, type Series } from "@/lib/siteData";
+import { BRAND, SERIES, visibleSeries, normalizeHref, type Series } from "@/lib/siteData";
 import { CHANNELS, type Channel } from "@/lib/channels";
 
 export default function SiteFooter({
@@ -33,9 +33,12 @@ export default function SiteFooter({
           </div>
           <div className="footcol">
             <h4>Shows</h4>
-            {shows.map((s) => (
-              <Link key={s.key} href={s.href}>{s.title}</Link>
-            ))}
+            {shows.map((s) => {
+              const link = normalizeHref(s.href);
+              return link.external
+                ? <a key={s.key} href={link.url} target="_blank" rel="noopener noreferrer">{s.title}</a>
+                : <Link key={s.key} href={link.url}>{s.title}</Link>;
+            })}
           </div>
           <div className="footcol">
             <h4>Elsewhere</h4>
