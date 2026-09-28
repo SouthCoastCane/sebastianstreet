@@ -202,6 +202,7 @@ class StudioEngine {
   private rtc: RealtimeSession | null = null;
   private ws: WebSocket | null = null;
   private subscribedGuests = new Set<string>();
+  private previewPulled = new Set<string>(); // guests whose video we pulled for the pre-admit preview
 
   private recorder: MediaRecorder | null = null;
   private recChunks: Blob[] = [];
@@ -468,7 +469,9 @@ class StudioEngine {
     // guest sessionId) used for name labels and active-speaker highlighting.
     const tiles: { video: HTMLVideoElement; name: string; key: string }[] = [];
     if (this.hostVideo) tiles.push({ video: this.hostVideo, name: this.hostName, key: "host" });
-    this.guestVideos.forEach((v, sid) => tiles.push({ video: v, name: this.guestName(sid), key: sid }));
+    // Only ADMITTED guests composite into the program. Others may have a video
+    // pulled for the host's pre-admit preview, but must not go on air.
+    this.guestVideos.forEach((v, sid) => { if (this.admitted.has(sid)) tiles.push({ video: v, name: this.guestName(sid), key: sid }); });
 
     if (this.screenSharing && this.screenVideo && this.screenVideo.videoWidth) {
       this.drawScreenLayout(ctx, tiles);
@@ -1559,10 +1562,22 @@ class StudioEngine {
       let d: any; try { d = JSON.parse(e.data); } catch { return; }
       if (d.type === "studio" && d.action === "roster") {
         this.roster = d.participants.filter((p: Participant) => p.role === "guest");
-        // Guests wait in the green room until the host admits them - no auto-pull.
-        // Clean up anyone who was on the program but has since left the room.
         const present = new Set(this.roster.map((g) => g.sessionId).filter(Boolean) as string[]);
+        // Clean up anyone who was on the program but has since left the room.
         Array.from(this.admitted).forEach((sid) => { if (!present.has(sid)) this.removeGuest(sid); });
+        // Safety preview: pull each waiting guest's VIDEO ONLY (no audio, so it
+        // never hits the broadcast) so the host can see them before admitting.
+        this.roster.forEach((g) => {
+          const sid = g.sessionId;
+          if (sid && g.hasVideo && this.rtc && !this.previewPulled.has(sid) && !this.admitted.has(sid)) {
+            this.previewPulled.add(sid);
+            this.rtc.pull(sid, ["video"]).catch(() => this.previewPulled.delete(sid));
+          }
+        });
+        // Drop preview state/video for guests who left before being admitted.
+        Array.from(this.previewPulled).forEach((sid) => {
+          if (!present.has(sid) && !this.admitted.has(sid)) { this.previewPulled.delete(sid); this.dropGuestVideo(sid); }
+        });
         this.emit();
       }
     };
@@ -1595,18 +1610,29 @@ class StudioEngine {
     if (!g) return;
     this.admitted.add(sessionId);
     this.subscribedGuests.add(sessionId);
-    // Pull video + audio in ONE negotiation (a single serialized pull) so the
-    // two don't race and collide on the peer connection.
+    // Video was usually already pulled for the preview - only pull what's missing
+    // (adding their audio to the broadcast). Pulls are serialized, so this is safe.
     const names: string[] = [];
-    if (g.hasVideo) names.push("video");
+    if (g.hasVideo && !this.previewPulled.has(sessionId)) names.push("video");
     if (g.hasAudio) names.push("audio");
     if (names.length) this.rtc.pull(sessionId, names).catch(() => {});
     this.emit();
   }
 
+  // Stop + drop a guest's (preview) video element without touching admit/audio.
+  private dropGuestVideo(sessionId: string) {
+    const v = this.guestVideos.get(sessionId);
+    if (v) { try { (v.srcObject as MediaStream)?.getTracks().forEach((t) => t.stop()); } catch {} v.srcObject = null; this.guestVideos.delete(sessionId); }
+  }
+  // The live MediaStream for a guest (for the host's pre-admit preview tile).
+  guestStream(sessionId: string): MediaStream | null {
+    return (this.guestVideos.get(sessionId)?.srcObject as MediaStream) || null;
+  }
+
   removeGuest(sessionId: string) {
     this.admitted.delete(sessionId);
     this.subscribedGuests.delete(sessionId);
+    this.previewPulled.delete(sessionId);
     const v = this.guestVideos.get(sessionId);
     if (v) { try { (v.srcObject as MediaStream)?.getTracks().forEach((t) => t.stop()); } catch {} v.srcObject = null; this.guestVideos.delete(sessionId); }
     const a = this.guestAudio.get(sessionId);

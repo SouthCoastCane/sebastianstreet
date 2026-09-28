@@ -70,6 +70,18 @@ function linkify(text: string) {
   );
 }
 
+// Live preview of a waiting guest's camera (before the host admits them), so the
+// host can screen what's on their feed. Re-attaches the stream on every render
+// (cheap) so it picks up the track once it arrives.
+function GuestPreview({ sessionId }: { sessionId: string }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    const s = broadcast.guestStream(sessionId);
+    if (ref.current && ref.current.srcObject !== s) { ref.current.srcObject = s; if (s) ref.current.play?.().catch(() => {}); }
+  });
+  return <video ref={ref} autoPlay playsInline muted style={{ width: 128, height: 72, objectFit: "cover", borderRadius: 6, background: "#000", border: "1px solid var(--line)", flexShrink: 0 }} />;
+}
+
 export default function ControlRoom() {
   const [, force] = useReducer((x) => x + 1, 0);
   const [tab, setTab] = useState<Tab>("onair");
@@ -850,7 +862,7 @@ export default function ControlRoom() {
           {tab === "guests" && (
             <div className="panel">
               <h3>Invite a guest</h3>
-              <div className="panel-sub">Send this link - they join in the browser (video, audio, both, or neither), then you Admit them to the program.</div>
+              <div className="panel-sub">Send this link - they join in the browser, then you <strong>preview their camera</strong> and Admit them to the program. Nothing they send goes on air until you admit.</div>
               <div className="copybox" style={{ marginBottom: 16 }}>
                 <input type="text" readOnly value={broadcast.inviteUrl()} />
                 <button className="btn btn-ghost btn-sm" type="button" onClick={() => navigator.clipboard?.writeText(broadcast.inviteUrl())}>Copy</button>
@@ -888,7 +900,10 @@ export default function ControlRoom() {
                         <button className="btn btn-ghost btn-sm" type="button" onClick={() => broadcast.removeGuest(p.sessionId!)}>Remove</button>
                       </div>
                     ) : (
-                      <button className="btn btn-primary btn-sm" type="button" disabled={!p.sessionId || !broadcast.realtimeReady} onClick={() => broadcast.admitGuest(p.sessionId!)}>Admit</button>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
+                        {p.hasVideo && p.sessionId && <GuestPreview sessionId={p.sessionId} />}
+                        <button className="btn btn-primary btn-sm" type="button" disabled={!p.sessionId || !broadcast.realtimeReady} onClick={() => broadcast.admitGuest(p.sessionId!)}>Admit</button>
+                      </div>
                     )}
                   </div>
                 );

@@ -61,11 +61,13 @@ export default function GuestJoinPage() {
   const meId = useRef<string>("");
   const subscribed = useRef<Set<string>>(new Set());
 
-  async function join() {
+  async function join(nameArg?: string, avArg?: AV) {
     setStatus("Joining...");
     meId.current = crypto.randomUUID();
-    const wantVideo = av === "both" || av === "video";
-    const wantAudio = av === "both" || av === "audio";
+    const useName = (nameArg ?? name).trim();
+    const useAv = avArg ?? av;
+    const wantVideo = useAv === "both" || useAv === "video";
+    const wantAudio = useAv === "both" || useAv === "audio";
 
     try {
       if (wantVideo || wantAudio) {
@@ -107,9 +109,14 @@ export default function GuestJoinPage() {
     }
 
     const participant: Participant = {
-      id: meId.current, name: name.trim() || "Guest", role: "guest",
+      id: meId.current, name: useName || "Guest", role: "guest",
       sessionId, hasVideo: wantVideo, hasAudio: wantAudio,
     };
+    // Remember the session so a page refresh re-joins seamlessly (a refresh
+    // shouldn't drop the guest out of the show).
+    try { sessionStorage.setItem("ssjoin-" + room, JSON.stringify({ name: useName, av: useAv })); } catch {}
+    if (useName && name !== useName) setName(useName);
+    if (useAv !== av) setAv(useAv);
 
     if (WS_BASE) {
       const sock = new WebSocket(`${WS_BASE}/room/${room}/ws`);
@@ -119,9 +126,9 @@ export default function GuestJoinPage() {
         let d: any; try { d = JSON.parse(e.data); } catch { return; }
         if (d.type === "studio" && d.action === "roster") {
           setRoster(d.participants);
-          // Pull EVERYONE else in the room (host + other guests), so the guest
-          // can watch the whole show. Skip ourselves.
           const ownSid = rtc.current?.sessionId;
+          const present = new Set((d.participants as Participant[]).map((p) => p.sessionId).filter(Boolean) as string[]);
+          // Pull EVERYONE else in the room (host + other guests) we don't have yet.
           (d.participants as Participant[]).forEach((p) => {
             const sid = p.sessionId;
             if (!sid || sid === ownSid || subscribed.current.has(sid) || !rtc.current) return;
@@ -129,8 +136,17 @@ export default function GuestJoinPage() {
             nameBySession.current.set(sid, p.name + (p.role === "host" ? " (host)" : ""));
             rtc.current.pull(sid, ["video", "audio"]).catch(() => subscribed.current.delete(sid));
           });
-          // Keep tile labels fresh if names arrived after the tracks.
-          setRemotes((prev) => prev.map((r) => ({ ...r, name: nameBySession.current.get(r.sid) || r.name })));
+          // Prune anyone who left or refreshed, so their stale/ghost tile is
+          // removed instead of lingering (or duplicating on reconnect).
+          subscribed.current.forEach((sid) => {
+            if (!present.has(sid)) {
+              subscribed.current.delete(sid);
+              try { remoteStreams.current.get(sid)?.getTracks().forEach((t) => t.stop()); } catch {}
+              remoteStreams.current.delete(sid);
+              nameBySession.current.delete(sid);
+            }
+          });
+          setRemotes((prev) => prev.filter((r) => present.has(r.sid)).map((r) => ({ ...r, name: nameBySession.current.get(r.sid) || r.name })));
         }
       };
     }
@@ -147,6 +163,16 @@ export default function GuestJoinPage() {
     };
   }, []);
 
+  // Auto-rejoin after a page refresh: if this browser had joined this room, come
+  // back in with the same name/settings instead of dropping to the join screen.
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("ssjoin-" + room);
+      if (saved) { const s = JSON.parse(saved); join(s.name, s.av); }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // (Re)attach the local preview whenever the joined view mounts or the guest
   // switches views (the <video> element remounts on a view change).
   useEffect(() => {
@@ -159,6 +185,7 @@ export default function GuestJoinPage() {
 
   // Leave the show: tear down the connection and return to the join screen.
   function leave() {
+    try { sessionStorage.removeItem("ssjoin-" + room); } catch {} // don't auto-rejoin after an intentional leave
     try { ws.current?.close(); } catch {}
     try { rtc.current?.close(); } catch {}
     try { bg.current?.stop(); } catch {}
@@ -251,7 +278,7 @@ export default function GuestJoinPage() {
               ))}
             </div>
           </div>
-          <button className="btn btn-primary" style={{ width: "100%" }} onClick={join}>Join the show</button>
+          <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => join()}>Join the show</button>
           {status && <p className="form-note">{status}</p>}
         </div>
       </div>
