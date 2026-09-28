@@ -61,12 +61,22 @@ function formatClock(secs: number): string {
   return `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, "0")}`;
 }
 
+// Turn URLs in a chat message into clickable links.
+function linkify(text: string) {
+  return text.split(/(https?:\/\/[^\s]+)/g).map((p, i) =>
+    /^https?:\/\//.test(p)
+      ? <a key={i} href={p} target="_blank" rel="noopener noreferrer nofollow">{p}</a>
+      : <span key={i}>{p}</span>
+  );
+}
+
 export default function ControlRoom() {
   const [, force] = useReducer((x) => x + 1, 0);
   const [tab, setTab] = useState<Tab>("onair");
   const [cams, setCams] = useState<MediaDeviceInfo[]>([]);
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [chat, setChat] = useState<ChatMessage[]>([]);
+  const [chatDraft, setChatDraft] = useState("");
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [reveal, setReveal] = useState(false);
@@ -538,6 +548,14 @@ export default function ControlRoom() {
   const hideBanner = () => { broadcast.hideBanner(); pushOverlay({ action: "hideBanner" }); };
   const clearAll = () => { broadcast.clearGraphics(); pushOverlay({ action: "clear" }); };
   const pin = (m: ChatMessage) => { broadcast.setPinned(m.name, m.text); pushOverlay({ action: "comment", name: m.name, text: m.text }); };
+  // Host posts into the live chat (shows as the host on the site; links allowed).
+  const sendChat = () => {
+    const text = chatDraft.trim();
+    const cw = chatWs.current;
+    if (!text || !cw || cw.readyState !== WebSocket.OPEN) return;
+    cw.send(JSON.stringify({ type: "chat", name: "Sebastian Street Studios", text, uid: "" }));
+    setChatDraft("");
+  };
   const unpin = () => { broadcast.clearPinned(); pushOverlay({ action: "hideComment" }); };
   const [modMsg, setModMsg] = useState("");
   const [timeoutFor, setTimeoutFor] = useState<ChatMessage | null>(null); // open the duration modal
@@ -787,7 +805,7 @@ export default function ControlRoom() {
                 {chat.map((m) => (
                   <div className="mod-row" key={m.id}>
                     <div className={`msg${m.tip ? " tipmsg" : ""}`} style={{ minWidth: 0 }}>
-                      {m.tip ? <><span className="tipamt">${m.tip.toFixed(2)}</span><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}</> : <>{srcBadge(m.source)}<b>{m.name}</b> {m.text}</>}
+                      {m.tip ? <><span className="tipamt">${m.tip.toFixed(2)}</span><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}</> : <>{srcBadge(m.source)}<b>{m.name}</b> {linkify(m.text)}</>}
                     </div>
                     {m.uid && (
                       <div className="mod-actions">
@@ -798,6 +816,12 @@ export default function ControlRoom() {
                   </div>
                 ))}
               </div>
+
+              {/* Host posts into the chat (links become clickable for viewers). */}
+              <form onSubmit={(e) => { e.preventDefault(); sendChat(); }} style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <input type="text" value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} placeholder="Message chat as host - paste links here" maxLength={500} style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--line)", color: "var(--cream)", borderRadius: 8, padding: "9px 12px", font: "inherit", fontSize: 13 }} />
+                <button className="btn btn-primary btn-sm" type="submit" disabled={!chatDraft.trim()}>Send</button>
+              </form>
 
               {timeoutFor && (
                 <div className="modal-backdrop" onClick={() => setTimeoutFor(null)}>

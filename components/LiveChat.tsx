@@ -20,6 +20,15 @@ type ChatMessage = { id: string; name: string; text: string; ts: number; tip?: n
 
 const SRC_LABEL: Record<string, string> = { youtube: "YT", twitch: "TW", facebook: "FB", site: "Site" };
 
+// Make URLs in a chat message clickable.
+function linkify(text: string) {
+  return text.split(/(https?:\/\/[^\s]+)/g).map((p, i) =>
+    /^https?:\/\//.test(p)
+      ? <a key={i} href={p} target="_blank" rel="noopener noreferrer nofollow">{p}</a>
+      : <span key={i}>{p}</span>
+  );
+}
+
 const WS_BASE = process.env.NEXT_PUBLIC_CHAT_WS_URL || "";
 const ROOM = "live";
 const HOST = "Sebastian Street Studios";
@@ -291,7 +300,7 @@ export default function LiveChat({ asGuest }: { asGuest?: string } = {}) {
             </div>
           ) : (
             <div className={`msg${m.name === HOST ? " is-host" : ""}`} key={m.id}>
-              <span className={`src src-${m.source || "site"}`}>{SRC_LABEL[m.source || "site"] || "Site"}</span><b>{m.name}</b>{m.text}
+              <span className={`src src-${m.source || "site"}`}>{SRC_LABEL[m.source || "site"] || "Site"}</span><b>{m.name}</b>{linkify(m.text)}
             </div>
           )
         )}
