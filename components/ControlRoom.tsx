@@ -587,11 +587,13 @@ export default function ControlRoom() {
   // Remember the (optional) Unlisted live link across refreshes during a show.
   useEffect(() => { try { const v = localStorage.getItem("ssyt-liveurl"); if (v) setYtLiveUrl(v); } catch {} }, []);
 
-  // Merge YouTube live chat while broadcasting. Polls a server route (keeps the
-  // API key server-side) at YouTube's recommended interval; the backlog on the
-  // first pass is skipped so we only inject messages that arrive once live.
+  // Merge YouTube live chat. Polls a server route (keeps the API key server-side)
+  // at YouTube's recommended interval; the backlog on the first pass is skipped
+  // so we only inject messages that arrive from now on. Runs while broadcasting,
+  // OR whenever a live link is pasted - so chat merges even for a YouTube-native
+  // stream (or while testing) without needing the platform Go Live to be on air.
   useEffect(() => {
-    if (!broadcast.live) return;
+    if (!broadcast.live && !ytLiveUrl) return;
     let stop = false, liveChatId = "", pageToken = "", firstPass = true;
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
