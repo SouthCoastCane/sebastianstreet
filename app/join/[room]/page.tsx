@@ -210,24 +210,33 @@ export default function GuestJoinPage() {
   }
 
   // Guest background controls (processed on-device).
+  // Swap the PUBLISHED video track so what the host (and thus the website +
+  // YouTube) sees matches the guest's choice: raw camera when off (survives a
+  // minimized tab), the processed canvas when a background is on. Without this
+  // the background would only show in the guest's own local preview.
+  function publishForBg(m: BgMode) {
+    const sender = videoSender();
+    if (!sender || sharing) return;
+    const track = m === "off"
+      ? localStream.current?.getVideoTracks()[0]
+      : bg.current?.stream().getVideoTracks()[0];
+    if (track) sender.replaceTrack(track).catch(() => {});
+  }
   function pickBgMode(m: BgMode) {
     setBgMode(m);
     bg.current?.setMode(m);
-    // Swap the PUBLISHED video track: raw camera when off (survives minimize),
-    // processed canvas when a background is on.
-    const sender = videoSender();
-    if (sender && !sharing) {
-      const track = m === "off"
-        ? localStream.current?.getVideoTracks()[0]
-        : bg.current?.stream().getVideoTracks()[0];
-      if (track) sender.replaceTrack(track).catch(() => {});
-    }
+    publishForBg(m);
   }
   function pickBgImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; e.target.value = "";
     if (!file || !bg.current) return;
     const reader = new FileReader();
-    reader.onload = () => { bg.current!.setImage(String(reader.result || "")); bg.current!.setMode("image"); setBgMode("image"); };
+    reader.onload = () => {
+      bg.current!.setImage(String(reader.result || ""));
+      bg.current!.setMode("image");
+      setBgMode("image");
+      publishForBg("image"); // push the processed canvas to the program feed
+    };
     reader.readAsDataURL(file);
   }
 
