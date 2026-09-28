@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { getActiveLiveChatId, getLiveChatMessages, youtubeConfigured } from "@/lib/youtube";
+import { getActiveLiveChatId, getLiveChatMessages, chatIdFromVideo, parseVideoId, youtubeConfigured } from "@/lib/youtube";
 import { getSiteConfig } from "@/lib/siteConfig";
 import { PRIMARY_CHANNEL } from "@/lib/channels";
 
@@ -24,15 +24,22 @@ export async function GET(request: Request) {
   let liveChatId = url.searchParams.get("liveChatId") || "";
   const pageToken = url.searchParams.get("pageToken") || undefined;
 
-  // Resolve the live chat id once (client caches it) from the passed channel or
-  // the configured one.
+  // Resolve the live chat id once (client caches it). A direct video URL/ID wins
+  // (works for UNLISTED streams too); otherwise auto-detect from the channel via
+  // search (PUBLIC streams only). Private streams are never accessible by API key.
   if (!liveChatId) {
-    let channelId = url.searchParams.get("channelId") || "";
-    if (!channelId) {
-      const { branding } = await getSiteConfig();
-      channelId = branding.youtubeChannelId || PRIMARY_CHANNEL.channelId;
+    const liveUrl = url.searchParams.get("liveUrl") || url.searchParams.get("videoId") || "";
+    const videoId = parseVideoId(liveUrl);
+    if (videoId) {
+      liveChatId = (await chatIdFromVideo(videoId)) || "";
+    } else {
+      let channelId = url.searchParams.get("channelId") || "";
+      if (!channelId) {
+        const { branding } = await getSiteConfig();
+        channelId = branding.youtubeChannelId || PRIMARY_CHANNEL.channelId;
+      }
+      liveChatId = (await getActiveLiveChatId(channelId)) || "";
     }
-    liveChatId = (await getActiveLiveChatId(channelId)) || "";
     if (!liveChatId) return NextResponse.json({ configured: true, live: false });
   }
 

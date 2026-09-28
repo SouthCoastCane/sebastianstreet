@@ -104,6 +104,34 @@ export async function getActiveLiveChatId(channelId: string): Promise<string | n
   }
 }
 
+// Pull a YouTube video ID out of any common watch/live/share URL - or accept a
+// bare 11-char ID as-is. Returns "" if nothing looks like an ID.
+export function parseVideoId(input: string): string {
+  const s = (input || "").trim();
+  if (!s) return "";
+  if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s; // already a bare ID
+  const m = s.match(/(?:v=|\/live\/|youtu\.be\/|\/watch\?.*v=|\/embed\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : "";
+}
+
+// Resolve the active live chat id directly from a known video ID. Works for
+// PUBLIC and UNLISTED broadcasts (an API key can read either given the id) -
+// unlike search, which only surfaces public streams. Private is not accessible.
+export async function chatIdFromVideo(videoId: string): Promise<string | null> {
+  if (!KEY || !videoId) return null;
+  try {
+    const res = await fetch(
+      `${API}/videos?part=liveStreamingDetails&id=${videoId}&key=${KEY}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.items?.[0]?.liveStreamingDetails?.activeLiveChatId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export type LiveChatMessage = { id: string; name: string; text: string; ts: number };
 export type LiveChatPage = {
   messages: LiveChatMessage[];

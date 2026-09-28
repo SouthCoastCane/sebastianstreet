@@ -99,7 +99,7 @@ export default function SimulcastManager() {
   // Platform-specific reminder for the "chat in" side (set in Settings).
   function chatNote() {
     if (platform === "YouTube")
-      return <>To also merge <strong>YouTube chat</strong> into your show, add your <strong>Channel ID</strong> in <a href="/admin/settings">Settings &rarr; YouTube channel</a>. (The stream key sends video out; the Channel ID reads chat back in - they&apos;re different.)</>;
+      return <>To also merge <strong>YouTube chat</strong> into your show, add your <strong>Channel ID</strong> in <a href="/admin/settings">Settings &rarr; YouTube channel</a>. (The stream key sends video out; the Channel ID reads chat back in - they&apos;re different.) The broadcast must be <strong>Public</strong> (auto) or <strong>Unlisted</strong> (paste its link in the Chat tab) - not Private.</>;
     if (platform === "Twitch")
       return <>To also merge <strong>Twitch chat</strong>, add your <strong>Twitch username</strong> in <a href="/admin/settings">Settings &rarr; Merged live chat</a>.</>;
     if (platform === "Facebook")
@@ -169,7 +169,7 @@ export default function SimulcastManager() {
         <div className="form-field">
           <label>{platform} stream key</label>
           <input type="password" value={streamKey} placeholder="Paste the stream key" onChange={(e) => setStreamKey(e.target.value)} />
-          <p className="form-note">YouTube: Studio -&gt; Create -&gt; Go Live -&gt; copy the <strong>Stream key</strong> (not the URL). Set the broadcast to <strong>Unlisted</strong> or Public - not Private. Turn <strong>Dual stream OFF</strong>.</p>
+          <p className="form-note">YouTube: Studio -&gt; Create -&gt; Go Live -&gt; copy the <strong>Stream key</strong> (not the URL). Set the broadcast to <strong>Public</strong> (recommended - its chat merges in automatically) or <strong>Unlisted</strong> (then paste the live link in the <strong>Chat</strong> tab so its chat pulls in). <strong>Private streams can&apos;t merge chat.</strong> Turn <strong>Dual stream OFF</strong>.</p>
           {chatNote() && <p className="form-note" style={{ marginTop: 6 }}>{chatNote()}</p>}
         </div>
         <button className="btn btn-primary btn-sm" type="button" onClick={add} disabled={busy}>{busy ? "Adding..." : "Add destination"}</button>

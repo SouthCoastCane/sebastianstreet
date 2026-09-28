@@ -112,6 +112,7 @@ export default function ControlRoom() {
   const [sessionCost, setSessionCost] = useState(0);
   const [liveDelivery, setLiveDelivery] = useState<"own" | "youtube">("own");
   const [ytChannelId, setYtChannelId] = useState(PRIMARY_CHANNEL.channelId);
+  const [ytLiveUrl, setYtLiveUrl] = useState(""); // optional per-broadcast link for Unlisted streams
   const [twitchChannel, setTwitchChannel] = useState("");
   const [activeCam, setActiveCam] = useState("");
   const [rundown, setRundown] = useState<RundownCfg>({ enabled: false, title: "RUNDOWN", showTimer: true, activeIndex: 0, items: [] });
@@ -583,6 +584,9 @@ export default function ControlRoom() {
     if (cw && cw.readyState === WebSocket.OPEN) cw.send(JSON.stringify({ type: "chat", uid: "", ...m }));
   };
 
+  // Remember the (optional) Unlisted live link across refreshes during a show.
+  useEffect(() => { try { const v = localStorage.getItem("ssyt-liveurl"); if (v) setYtLiveUrl(v); } catch {} }, []);
+
   // Merge YouTube live chat while broadcasting. Polls a server route (keeps the
   // API key server-side) at YouTube's recommended interval; the backlog on the
   // first pass is skipped so we only inject messages that arrive once live.
@@ -598,6 +602,7 @@ export default function ControlRoom() {
         const qs = new URLSearchParams();
         if (liveChatId) qs.set("liveChatId", liveChatId);
         if (pageToken) qs.set("pageToken", pageToken);
+        if (ytLiveUrl) qs.set("liveUrl", ytLiveUrl); // Unlisted stream override wins over channel auto-detect
         if (ytChannelId) qs.set("channelId", ytChannelId);
         const r = await fetch(`/api/chat/youtube?${qs.toString()}`, { headers: token ? { Authorization: `Bearer ${token}` } : {}, cache: "no-store" });
         const d = await r.json();
@@ -617,7 +622,7 @@ export default function ControlRoom() {
     }
     poll();
     return () => { stop = true; clearTimeout(timer); };
-  }, [broadcast.live, ytChannelId]);
+  }, [broadcast.live, ytChannelId, ytLiveUrl]);
 
   // Merge Twitch chat while broadcasting (anonymous read, real-time).
   useEffect(() => {
@@ -881,6 +886,22 @@ export default function ControlRoom() {
               <div className="dest-row" style={{ marginTop: 6 }}>
                 <div><div className="dest-name">Reset chat when I go live</div><div className="dest-meta">Start each broadcast with a clean chat</div></div>
                 <label className="toggle"><input type="checkbox" checked={broadcast.autoClearChat} onChange={(e) => broadcast.setAutoClearChat(e.target.checked)} /><span className="track" /></label>
+              </div>
+
+              {/* YouTube chat pull-in: Public auto-detects; Unlisted needs the link; Private can't be read. */}
+              <div className="form-field" style={{ marginTop: 12 }}>
+                <label>YouTube live link (only needed for Unlisted streams)</label>
+                <input
+                  type="text"
+                  value={ytLiveUrl}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  maxLength={200}
+                  onChange={(e) => { const v = e.target.value; setYtLiveUrl(v); try { v ? localStorage.setItem("ssyt-liveurl", v) : localStorage.removeItem("ssyt-liveurl"); } catch {} }}
+                  style={{ background: "var(--bg2)", border: "1px solid var(--line)", color: "var(--cream)", borderRadius: 8, padding: "9px 12px", font: "inherit", fontSize: 13, width: "100%" }}
+                />
+                <p className="form-note" style={{ marginTop: 6 }}>
+                  <b>Public</b> streams pull chat in automatically (a couple of minutes after going live). <b>Unlisted</b> streams aren&apos;t searchable - paste the live video link here to pull their chat instantly. <b>Private</b> streams can&apos;t be read by YouTube&apos;s API, so set the broadcast to Public or Unlisted to merge its chat.
+                </p>
               </div>
               {modMsg && <p className="form-ok" style={{ fontSize: "12.5px", marginBottom: 10 }}>{modMsg}</p>}
               <div style={{ maxHeight: 460, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
