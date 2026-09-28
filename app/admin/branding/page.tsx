@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_BRANDING, type SiteBranding } from "@/lib/siteData";
+import { HEADING_FONTS, BODY_FONTS, headingStack, bodyStack } from "@/lib/fonts";
 import { saveSection, loadConfig } from "@/lib/saveSection";
 import PreviewSiteModal from "@/components/PreviewSiteModal";
 
@@ -209,6 +210,34 @@ export default function AdminBranding() {
                 <input type="color" value={form.live} onChange={(e) => set("live", e.target.value)} />
                 <input type="text" value={form.live} onChange={(e) => set("live", e.target.value)} />
               </div>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>Typography</h3>
+            <div className="panel-sub">Fonts and text color across the whole site.</div>
+            <div className="form-field">
+              <label>Heading font</label>
+              <select value={form.headingFont} onChange={(e) => set("headingFont", e.target.value)} style={{ fontFamily: headingStack(form.headingFont) }}>
+                {Object.keys(HEADING_FONTS).map((f) => <option key={f} value={f} style={{ fontFamily: headingStack(f) }}>{f}{f === "Anton" ? " (default)" : ""}</option>)}
+              </select>
+              <p className="form-note" style={{ marginTop: 4 }}>The big display headlines.</p>
+            </div>
+            <div className="form-field">
+              <label>Body font</label>
+              <select value={form.bodyFont} onChange={(e) => set("bodyFont", e.target.value)} style={{ fontFamily: bodyStack(form.bodyFont) }}>
+                {Object.keys(BODY_FONTS).map((f) => <option key={f} value={f} style={{ fontFamily: bodyStack(f) }}>{f}{f === "Inter" ? " (default)" : ""}</option>)}
+              </select>
+              <p className="form-note" style={{ marginTop: 4 }}>Paragraphs, menus, and buttons.</p>
+            </div>
+            <div className="form-field">
+              <label>Text color</label>
+              <div className="color-row">
+                <input type="color" value={form.textColor || "#F3EFE7"} onChange={(e) => set("textColor", e.target.value)} />
+                <input type="text" value={form.textColor} placeholder="Auto (based on background)" onChange={(e) => set("textColor", e.target.value)} />
+                {form.textColor && <button className="btn btn-ghost btn-sm" type="button" onClick={() => set("textColor", "")}>Auto</button>}
+              </div>
+              <p className="form-note" style={{ marginTop: 4 }}>Leave blank for automatic contrast. Pick a light color on a dark background (or dark on light) so text stays readable.</p>
             </div>
           </div>
 

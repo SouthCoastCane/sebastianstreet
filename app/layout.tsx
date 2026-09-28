@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { Inter, Anton } from "next/font/google";
 import "./globals.css";
 import { getSiteConfig } from "@/lib/siteConfig";
+import { headingStack, bodyStack, googleFontsHref } from "@/lib/fonts";
 
 // Render per request so admin edits to content + branding appear immediately.
 export const dynamic = "force-dynamic";
@@ -50,9 +51,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Text colors follow the background: neutral (never warm/pinkish) on dark
   // backgrounds, and dark automatically when the client picks a light one.
   const light = isLightHex(branding.background);
-  const text = light ? "#12100E" : "#F3EFE7";
+  const autoText = light ? "#12100E" : "#F3EFE7";
+  // Client can override the main text color; otherwise auto-contrast to the bg.
+  const text = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test((branding.textColor || "").trim()) ? branding.textColor.trim() : autoText;
   const mute = light ? "#5B615C" : "#BFC4C0";
   const dim = light ? "#7C827D" : "#8E938F";
+  // Chosen typefaces override the default font tokens the stylesheet reads. Only
+  // override for NON-default fonts - the defaults (Anton/Inter) are loaded by
+  // next/font under hashed family names, so leave their vars untouched.
+  const fontHref = googleFontsHref(branding.headingFont, branding.bodyFont);
   const themeVars = {
     "--amber": branding.accent,
     "--orange": branding.accent,
@@ -65,11 +72,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     "--mute": mute,
     "--text-muted": mute,
     "--text-dim": dim,
+    ...(branding.headingFont && branding.headingFont !== "Anton" ? { "--font-anton": headingStack(branding.headingFont) } : {}),
+    ...(branding.bodyFont && branding.bodyFont !== "Inter" ? { "--font-inter": bodyStack(branding.bodyFont) } : {}),
   } as CSSProperties;
 
   return (
     <html lang="en" className={`${inter.variable} ${anton.variable}`} style={themeVars}>
       <head>
+        {fontHref && <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />}
+        {fontHref && <link rel="stylesheet" href={fontHref} />}
         {/* Apply the saved light/dark theme before paint to avoid a flash. */}
         <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem('theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}` }} />
       </head>

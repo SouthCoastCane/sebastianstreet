@@ -226,6 +226,9 @@ export type SiteBranding = {
   youtubeChannelId: string; // the channel the live embed + "Watch on YouTube" point at
   twitchChannel: string; // twitch username to merge chat from (blank = off)
   hostName: string; // display name for the host (on the tile, in chat, guest roster)
+  textColor: string; // main text color override ("" = auto-contrast to background)
+  headingFont: string; // display/heading typeface name (see lib/fonts.ts)
+  bodyFont: string; // body/UI typeface name (see lib/fonts.ts)
 };
 
 export const DEFAULT_BRANDING: SiteBranding = {
@@ -245,6 +248,9 @@ export const DEFAULT_BRANDING: SiteBranding = {
   youtubeChannelId: "UC_HAwaQ2BKMPGClxLv9UXvw",
   twitchChannel: "",
   hostName: "Host",
+  textColor: "",
+  headingFont: "Anton",
+  bodyFont: "Inter",
 };
 
 // Branded "scene": background behind the host, optional green-screen removal,
