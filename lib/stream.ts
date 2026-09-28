@@ -224,6 +224,39 @@ export async function createDirectUpload(maxDurationSeconds = 21600): Promise<{ 
   }
 }
 
+// Prepare an uploaded video for use as the intro bumper: wait for Cloudflare to
+// finish processing, then generate a CORS-enabled MP4 download the studio canvas
+// can draw without tainting it. Stateless + idempotent so the browser can poll
+// this repeatedly after a direct upload until stage === "ready".
+export type Mp4Prep =
+  | { stage: "processing"; pct: number }
+  | { stage: "generating"; pct: number }
+  | { stage: "ready"; url: string }
+  | { stage: "error"; error: string };
+
+export async function prepareMp4(uid: string): Promise<Mp4Prep> {
+  if (!streamConfigured) return { stage: "error", error: "Cloudflare Stream is not connected." };
+  try {
+    // 1. Is the source video done processing?
+    const vres = await fetch(`${BASE}/${uid}`, { headers: headers(), cache: "no-store" });
+    const vd = await vres.json().catch(() => ({}));
+    if (!vd.success) return { stage: "error", error: vd?.errors?.[0]?.message || `Cloudflare returned ${vres.status}.` };
+    if (!vd.result?.readyToStream) {
+      return { stage: "processing", pct: Math.round(Number(vd.result?.status?.pctComplete) || 0) };
+    }
+    // 2. Generate (or fetch the existing) MP4 download. POST is idempotent - it
+    //    returns the current download state if one already exists.
+    const dres = await fetch(`${BASE}/${uid}/downloads`, { method: "POST", headers: headers() });
+    const dd = await dres.json().catch(() => ({}));
+    if (!dd.success) return { stage: "error", error: dd?.errors?.[0]?.message || `Cloudflare returned ${dres.status}.` };
+    const def = dd.result?.default;
+    if (def?.status === "ready" && def?.url) return { stage: "ready", url: def.url as string };
+    return { stage: "generating", pct: Math.round(Number(def?.percentComplete) || 0) };
+  } catch (e: any) {
+    return { stage: "error", error: e?.message || "Could not reach Cloudflare." };
+  }
+}
+
 // List recorded VOD videos from Stream (past broadcasts + uploads).
 export async function listStreamVideos(): Promise<any[]> {
   if (!streamConfigured) return [];
