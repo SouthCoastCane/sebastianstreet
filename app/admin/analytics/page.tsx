@@ -1,10 +1,11 @@
 import { getAllStats, getUploads, youtubeConfigured } from "@/lib/youtube";
-import { CHANNELS, PRIMARY_CHANNEL } from "@/lib/channels";
+import { getSiteConfig } from "@/lib/siteConfig";
 import { formatCount } from "@/lib/format";
 
 export default async function AdminAnalytics() {
-  const stats = await getAllStats(CHANNELS.map((c) => c.channelId));
-  const recent = await getUploads(PRIMARY_CHANNEL.uploadsPlaylist, 8);
+  const { channels } = await getSiteConfig();
+  const stats = await getAllStats(channels.map((c) => c.channelId));
+  const recent = channels[0] ? await getUploads(channels[0].uploadsPlaylist, 8) : [];
 
   return (
     <>
@@ -26,7 +27,7 @@ export default async function AdminAnalytics() {
         <div className="stat-card"><div className="k">Subscribers</div><div className="v">{formatCount(stats?.subscribers)}</div><div className="d flat">All channels</div></div>
         <div className="stat-card"><div className="k">Total views</div><div className="v">{formatCount(stats?.views)}</div><div className="d flat">All-time</div></div>
         <div className="stat-card"><div className="k">Videos</div><div className="v">{formatCount(stats?.videos)}</div><div className="d flat">Published</div></div>
-        <div className="stat-card"><div className="k">Channels</div><div className="v">{CHANNELS.length}</div><div className="d flat">Connected</div></div>
+        <div className="stat-card"><div className="k">Channels</div><div className="v">{channels.length}</div><div className="d flat">Connected</div></div>
       </div>
 
       <div className="panel">

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SERIES, DEFAULT_CONTENT, type SiteContent, type Series } from "@/lib/siteData";
-import { CHANNELS } from "@/lib/channels";
 import { saveSection, loadConfig } from "@/lib/saveSection";
 import PreviewSiteModal from "@/components/PreviewSiteModal";
 
@@ -71,9 +70,34 @@ export default function AdminContent() {
 
   useEffect(() => {
     loadConfig()
-      .then((cfg) => cfg?.content && setForm({ ...DEFAULT_CONTENT, ...cfg.content }))
+      .then((cfg) => {
+        if (cfg?.content) setForm({ ...DEFAULT_CONTENT, ...cfg.content });
+        if (Array.isArray(cfg?.channels)) setChannels(cfg.channels.map((c: any) => ({ name: c.name || "", handle: c.handle || "", channelId: c.channelId || "" })));
+      })
       .catch(() => {});
   }, []);
+
+  // ---- Connected YouTube channels (add / remove / save) ----
+  type ChRow = { name: string; handle: string; channelId: string };
+  const [channels, setChannels] = useState<ChRow[]>([]);
+  const [chDraft, setChDraft] = useState<ChRow>({ name: "", handle: "", channelId: "" });
+  const [chStatus, setChStatus] = useState("");
+  function addChannel() {
+    const id = chDraft.channelId.trim();
+    if (!/^UC[\w-]+$/.test(id)) { setChStatus("Enter a valid Channel ID - it starts with \"UC\"."); return; }
+    if (channels.some((c) => c.channelId === id)) { setChStatus("That channel is already added."); return; }
+    setChannels([...channels, { name: chDraft.name.trim() || chDraft.handle.trim() || "Channel", handle: chDraft.handle.trim(), channelId: id }]);
+    setChDraft({ name: "", handle: "", channelId: "" });
+    setChStatus("Added. Click Save channels to publish + sync their videos.");
+  }
+  function removeChannel(i: number) { setChannels(channels.filter((_, idx) => idx !== i)); }
+  async function saveChannels() {
+    setChStatus("Saving...");
+    try {
+      const r = await saveSection("channels", { items: channels });
+      setChStatus(r.saved ? "Channels saved. Their videos now sync into the site." : "Preview only - connect Firebase to save.");
+    } catch (e: any) { setChStatus(e.message || "Could not save."); }
+  }
 
   function set<K extends keyof SiteContent>(key: K, value: SiteContent[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -227,7 +251,17 @@ export default function AdminContent() {
                 <tbody>
                   {series.map((s, i) => (
                     <tr key={s.key || i}>
-                      <td><div className="vt" style={{ fontWeight: 600 }}>{s.title}</div><div className="vs" style={{ color: "var(--text-dim)", fontSize: ".8rem" }}>{s.tag}</div></td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ width: 56, height: 32, borderRadius: 5, overflow: "hidden", flexShrink: 0, border: "1px solid var(--line)" }}>
+                            {s.image ? <img src={s.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div className={`timg art ${s.art}`} style={{ width: "100%", height: "100%" }} />}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div className="vt" style={{ fontWeight: 600 }}>{s.title}</div>
+                            <div className="vs" style={{ color: "var(--text-dim)", fontSize: ".8rem" }}>{s.tag}</div>
+                          </div>
+                        </div>
+                      </td>
                       <td>
                         <button type="button" className={`pill ${s.visible === false ? "" : "published"}`} style={{ cursor: "pointer", border: "none" }} onClick={() => toggleVisible(i)} title="Click to toggle">
                           {s.visible === false ? "Hidden" : "Visible"}
@@ -248,13 +282,31 @@ export default function AdminContent() {
 
           <div className="panel">
             <h3>Connected YouTube channels</h3>
-            <div className="panel-sub">Used to pull real videos into the library.</div>
-            {CHANNELS.map((c) => (
-              <div className="dest-row" key={c.key}>
-                <div><div className="dest-name">{c.name}</div><div className="dest-meta">youtube.com/{c.handle}</div></div>
-                <span className="pill published">Linked</span>
+            <div className="panel-sub">Videos from these channels sync into the site (Library + Videos). Add a channel by its Channel ID.</div>
+            {channels.map((c, i) => (
+              <div className="dest-row" key={c.channelId || i}>
+                <div style={{ minWidth: 0 }}>
+                  <div className="dest-name">{c.name}</div>
+                  <div className="dest-meta">{c.handle ? `youtube.com/${c.handle.startsWith("@") ? c.handle : "@" + c.handle}` : c.channelId}</div>
+                </div>
+                <button className="btn btn-ghost btn-sm" type="button" onClick={() => removeChannel(i)} style={{ color: "var(--live)" }}>Remove</button>
               </div>
             ))}
+            {channels.length === 0 && <p className="muted" style={{ fontSize: 13 }}>No channels yet. Add one below.</p>}
+
+            <div style={{ borderTop: "1px solid var(--line)", marginTop: 12, paddingTop: 12 }}>
+              <div className="form-field"><label>Channel name</label><input type="text" value={chDraft.name} placeholder="The Sebastian Street Studios Show" onChange={(e) => setChDraft({ ...chDraft, name: e.target.value })} /></div>
+              <div className="panel-split">
+                <div className="form-field"><label>Handle (optional)</label><input type="text" value={chDraft.handle} placeholder="@YourChannel" onChange={(e) => setChDraft({ ...chDraft, handle: e.target.value })} /></div>
+                <div className="form-field"><label>Channel ID</label><input type="text" value={chDraft.channelId} placeholder="UCxxxxxxxxxxxxxxxxxxxxxx" onChange={(e) => setChDraft({ ...chDraft, channelId: e.target.value })} /></div>
+              </div>
+              <p className="form-note" style={{ marginTop: -4, marginBottom: 10 }}>Find the Channel ID in YouTube Studio &rarr; Settings &rarr; Channel &rarr; Advanced settings (starts with &quot;UC&quot;).</p>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <button className="btn btn-ghost btn-sm" type="button" onClick={addChannel}>Add channel</button>
+                <button className="btn btn-primary btn-sm" type="button" onClick={saveChannels}>Save channels</button>
+                {chStatus && <span className="form-note" style={{ margin: 0 }}>{chStatus}</span>}
+              </div>
+            </div>
           </div>
         </div>
       </div>

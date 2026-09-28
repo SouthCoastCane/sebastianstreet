@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   const section = body?.section;
   const data = body?.data;
-  if (section !== "content" && section !== "branding" && section !== "schedule" && section !== "scene" && section !== "bumper" && section !== "sounds" && section !== "rundown") {
+  if (section !== "content" && section !== "branding" && section !== "schedule" && section !== "scene" && section !== "bumper" && section !== "sounds" && section !== "rundown" && section !== "channels") {
     return NextResponse.json({ error: "Unknown section." }, { status: 400 });
   }
   if (!data || typeof data !== "object") {
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   }
   const editorRoles: Role[] = ["owner", "manager"];
   const showRoles: Role[] = ["owner", "manager", "host"];
-  const needed = section === "content" || section === "branding" ? editorRoles : showRoles;
+  const needed = section === "content" || section === "branding" || section === "channels" ? editorRoles : showRoles;
   if (!needed.includes(role)) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
@@ -138,6 +138,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ saved: true });
     }
 
+    if (section === "channels") {
+      // data.items = array of { name, handle, channelId }. Only accept real
+      // channel IDs (start with "UC"); url + uploads playlist are derived on read.
+      const items = Array.isArray(data.items) ? data.items : [];
+      const clean = items
+        .slice(0, 12)
+        .map((it: any) => ({
+          name: String(it.name ?? "").slice(0, 80),
+          handle: String(it.handle ?? "").trim().slice(0, 60),
+          channelId: String(it.channelId ?? "").trim().slice(0, 40),
+        }))
+        .filter((it: any) => /^UC[\w-]+$/.test(it.channelId));
+      await db.collection("site").doc("channels").set({ items: clean });
+      return NextResponse.json({ saved: true });
+    }
+
     if (section === "sounds") {
       // data.items = array of { id, label, url }. Keep the doc under Firestore's
       // 1MB limit: cap the pad count and only keep small inline audio data URLs.
@@ -162,6 +178,26 @@ export async function POST(request: Request) {
     const clean: Record<string, unknown> = {};
     for (const key of Object.keys(allowed)) {
       if (key in data) clean[key] = data[key];
+    }
+    // Sanitize the editable series list: cap count and only keep small inline
+    // thumbnails so the content doc stays under Firestore's 1MB limit.
+    if (section === "content" && Array.isArray(clean.series)) {
+      clean.series = (clean.series as any[]).slice(0, 24).map((s) => {
+        const image = typeof s.image === "string" ? s.image : "";
+        return {
+          key: String(s.key ?? "").slice(0, 60),
+          title: String(s.title ?? "").slice(0, 120),
+          tag: String(s.tag ?? "").slice(0, 40),
+          badge: String(s.badge ?? "").slice(0, 40),
+          blurb: String(s.blurb ?? "").slice(0, 400),
+          href: String(s.href ?? "/library").slice(0, 200),
+          by: String(s.by ?? "").slice(0, 120),
+          category: String(s.category ?? "").slice(0, 40),
+          art: String(s.art ?? "a1").slice(0, 4),
+          image: image.startsWith("data:image") && image.length < 200_000 ? image : "",
+          visible: s.visible !== false,
+        };
+      });
     }
     // Inline image fields are data URLs - keep them valid + under Firestore's
     // 1MB doc limit (drop oversized/non-image blobs; color strings are untouched).

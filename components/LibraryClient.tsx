@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CHANNELS } from "@/lib/channels";
+import { CHANNELS, type Channel } from "@/lib/channels";
 
 type YtVideo = { id: string; title: string; publishedAt: string; thumbnail: string };
 
-export default function LibraryClient() {
-  const [channel, setChannel] = useState(CHANNELS[0]);
+export default function LibraryClient({ channels = CHANNELS }: { channels?: Channel[] }) {
+  const list = channels.length ? channels : CHANNELS;
+  const [channel, setChannel] = useState(list[0]);
   const [videos, setVideos] = useState<YtVideo[]>([]);
   const [state, setState] = useState<"idle" | "loading" | "empty" | "ready">("idle");
 
@@ -32,7 +33,7 @@ export default function LibraryClient() {
       <span className="eyebrow">Straight from YouTube</span>
       <h2 className="anton big" style={{ marginBottom: 20 }}>Now<br /><span className="or">playing</span></h2>
       <div className="filters">
-        {CHANNELS.map((c) => (
+        {list.map((c) => (
           <button
             key={c.key}
             className={`filter-btn${channel.key === c.key ? " active" : ""}`}

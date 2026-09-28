@@ -17,6 +17,7 @@ import {
   type SiteRundown,
   type ScheduleItem,
 } from "./siteData";
+import { CHANNELS, makeChannel, type Channel } from "./channels";
 
 export type SiteConfig = {
   content: SiteContent;
@@ -26,6 +27,7 @@ export type SiteConfig = {
   bumper: SiteBumper;
   sounds: SoundPad[];
   rundown: SiteRundown;
+  channels: Channel[];
 };
 
 const FALLBACK: SiteConfig = {
@@ -36,6 +38,7 @@ const FALLBACK: SiteConfig = {
   bumper: DEFAULT_BUMPER,
   sounds: DEFAULT_SOUNDS,
   rundown: DEFAULT_RUNDOWN,
+  channels: CHANNELS,
 };
 
 // Reads editable content + branding + schedule from Firestore, merged over the
@@ -45,7 +48,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
   try {
     const db = getAdminDb();
     if (!db) return FALLBACK;
-    const [c, b, s, sc, bm, sd, rd] = await Promise.all([
+    const [c, b, s, sc, bm, sd, rd, ch] = await Promise.all([
       db.collection("site").doc("content").get(),
       db.collection("site").doc("branding").get(),
       db.collection("site").doc("schedule").get(),
@@ -53,9 +56,11 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       db.collection("site").doc("bumper").get(),
       db.collection("site").doc("sounds").get(),
       db.collection("site").doc("rundown").get(),
+      db.collection("site").doc("channels").get(),
     ]);
     const scheduleItems = s.exists ? (s.data()?.items as ScheduleItem[] | undefined) : undefined;
     const soundItems = sd.exists ? (sd.data()?.items as SoundPad[] | undefined) : undefined;
+    const channelItems = ch.exists ? (ch.data()?.items as any[] | undefined) : undefined;
     return {
       content: { ...DEFAULT_CONTENT, ...(c.exists ? (c.data() as Partial<SiteContent>) : {}) },
       branding: { ...DEFAULT_BRANDING, ...(b.exists ? (b.data() as Partial<SiteBranding>) : {}) },
@@ -64,6 +69,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       bumper: { ...DEFAULT_BUMPER, ...(bm.exists ? (bm.data() as Partial<SiteBumper>) : {}) },
       sounds: Array.isArray(soundItems) ? soundItems : DEFAULT_SOUNDS,
       rundown: { ...DEFAULT_RUNDOWN, ...(rd.exists ? (rd.data() as Partial<SiteRundown>) : {}) },
+      channels: Array.isArray(channelItems) && channelItems.length ? channelItems.map(makeChannel) : CHANNELS,
     };
   } catch {
     return FALLBACK;

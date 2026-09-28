@@ -47,3 +47,20 @@ export const PRIMARY_CHANNEL = CHANNELS[0];
 export function channelByKey(key: string): Channel | undefined {
   return CHANNELS.find((c) => c.key === key);
 }
+
+// Build a full Channel from the minimal fields the admin stores (name, handle,
+// channelId). The uploads playlist + watch URL + key are derived so the rest of
+// the app keeps working with a complete Channel object.
+export function makeChannel(input: { name?: string; handle?: string; channelId: string }): Channel {
+  const channelId = (input.channelId || "").trim();
+  let handle = (input.handle || "").trim();
+  if (handle && !handle.startsWith("@")) handle = "@" + handle;
+  return {
+    key: channelId || handle || "channel",
+    name: (input.name || handle || "Channel").trim(),
+    handle,
+    url: handle ? `https://www.youtube.com/${handle}` : `https://www.youtube.com/channel/${channelId}`,
+    channelId,
+    uploadsPlaylist: /^UC/.test(channelId) ? uploads(channelId) : "",
+  };
+}

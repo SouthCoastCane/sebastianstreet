@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import ContactForm from "@/components/ContactForm";
-import { CHANNELS } from "@/lib/channels";
 import { getSiteConfig } from "@/lib/siteConfig";
 
 export const metadata: Metadata = { title: "Contact" };
 
 export default async function ContactPage() {
-  const { content } = await getSiteConfig();
+  const { content, channels } = await getSiteConfig();
   return (
     <>
       <section className="page-hero">
@@ -30,11 +29,11 @@ export default async function ContactPage() {
                   <div className="label">Guest and booking</div>
                   <div className="value"><a href={`mailto:${content.emailBooking}`}>{content.emailBooking}</a></div>
                 </li>
-                {CHANNELS.map((c) => (
+                {channels.map((c) => (
                   <li key={c.key}>
                     <div className="label">{c.name}</div>
                     <div className="value">
-                      <a href={c.url} target="_blank" rel="noopener noreferrer">youtube.com/{c.handle}</a>
+                      <a href={c.url} target="_blank" rel="noopener noreferrer">{c.handle ? `youtube.com/${c.handle}` : "YouTube"}</a>
                     </div>
                   </li>
                 ))}

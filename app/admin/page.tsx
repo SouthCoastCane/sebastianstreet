@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getAllStats, getStatsByChannel, getLiveInfo, youtubeConfigured } from "@/lib/youtube";
-import { CHANNELS, PRIMARY_CHANNEL } from "@/lib/channels";
+import { getSiteConfig } from "@/lib/siteConfig";
 import { formatCount } from "@/lib/format";
 import { getAdminDb, getAdminAuth, adminConfigured } from "@/lib/firebaseAdmin";
 import { getCostEstimate } from "@/lib/costEstimate";
@@ -22,10 +22,11 @@ function dailyBuckets(items: { ts: number; v: number }[], now: number) {
 }
 
 export default async function AdminOverview() {
+  const { channels } = await getSiteConfig();
   const [stats, byChannel, live, cost] = await Promise.all([
-    getAllStats(CHANNELS.map((c) => c.channelId)),
-    getStatsByChannel(CHANNELS.map((c) => c.channelId)),
-    getLiveInfo(PRIMARY_CHANNEL.channelId),
+    getAllStats(channels.map((c) => c.channelId)),
+    getStatsByChannel(channels.map((c) => c.channelId)),
+    getLiveInfo(channels[0]?.channelId || ""),
     getCostEstimate(),
   ]);
   const now = Date.now();
@@ -58,7 +59,7 @@ export default async function AdminOverview() {
   const dailyUsers = dailyBuckets(userTimes.map((ts) => ({ ts, v: 1 })), now);
 
   // Per-channel figures aligned to our channel order (real YouTube stats).
-  const rows = CHANNELS.map((c) => {
+  const rows = channels.map((c) => {
     const s = byChannel.find((x) => x.channelId === c.channelId);
     return { label: SHORT[c.key] || c.name, subs: s?.subscribers ?? 0, views: s?.views ?? 0 };
   });
@@ -125,9 +126,9 @@ export default async function AdminOverview() {
         <div className="panel">
           <h3>Channels</h3>
           <div className="panel-sub">Connected via the YouTube Data API.</div>
-          {CHANNELS.map((c) => (
+          {channels.map((c) => (
             <div className="dest-row" key={c.key}>
-              <div><div className="dest-name">{c.name}</div><div className="dest-meta">youtube.com/{c.handle}</div></div>
+              <div><div className="dest-name">{c.name}</div><div className="dest-meta">{c.handle ? `youtube.com/${c.handle}` : c.channelId}</div></div>
               <a className="btn btn-ghost btn-sm" href={c.url} target="_blank" rel="noopener noreferrer">Open</a>
             </div>
           ))}

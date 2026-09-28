@@ -5,7 +5,7 @@ import { getSiteConfig } from "@/lib/siteConfig";
 export const metadata: Metadata = { title: "Library" };
 
 export default async function LibraryPage() {
-  const { content } = await getSiteConfig();
+  const { content, channels } = await getSiteConfig();
   return (
     <>
       <section className="page-hero">
@@ -17,7 +17,7 @@ export default async function LibraryPage() {
       </section>
 
       <section className="sec" style={{ paddingTop: 56 }}>
-        <LibraryClient />
+        <LibraryClient channels={channels} />
       </section>
     </>
   );

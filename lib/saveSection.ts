@@ -4,7 +4,7 @@ export type SaveResult = { saved: boolean; demo?: boolean };
 
 // Client helper: POST an edited section to the API with the admin's ID token.
 export async function saveSection(
-  section: "content" | "branding" | "schedule",
+  section: "content" | "branding" | "schedule" | "channels",
   data: Record<string, unknown>
 ): Promise<SaveResult> {
   const token = await getIdToken();
