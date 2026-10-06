@@ -715,6 +715,15 @@ export default function ControlRoom() {
               </select>
             </div>
           </div>
+          <div className="form-field" style={{ marginTop: 12 }}>
+            <label>Broadcast quality</label>
+            <select value={broadcast.resHeight} onChange={(e) => broadcast.setResolution(Number(e.target.value) as 480 | 720 | 1080)}>
+              <option value={480}>480p - lower bandwidth</option>
+              <option value={720}>720p - recommended</option>
+              <option value={1080}>1080p - best (needs more upload speed)</option>
+            </select>
+            <p className="form-note" style={{ marginTop: 4 }}>Best set before you go live. Higher quality needs more upload bandwidth; if the stream stutters, drop to 720p or 480p.</p>
+          </div>
           {cams.length > 1 && (
             <div style={{ marginTop: 10 }}>
               <span className="dest-meta" style={{ display: "block", marginBottom: 6 }}>Quick camera switch</span>

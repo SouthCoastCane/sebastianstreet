@@ -12,11 +12,18 @@ type Participant = { id: string; name: string; role: string; sessionId?: string;
 type View = "everyone" | "me";
 
 // A remote participant's live video/audio tile. Keeps its own <video> in sync
-// with the (live) MediaStream it's given.
-function RemoteTile({ stream, label }: { stream: MediaStream; label: string }) {
+// with the (live) MediaStream it's given. Reports its element up (so a user tap
+// can unlock audio on mobile) and flags when autoplay-with-sound is blocked.
+function RemoteTile({ stream, label, onEl, onBlocked }: { stream: MediaStream; label: string; onEl?: (el: HTMLVideoElement | null) => void; onBlocked?: () => void }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   useEffect(() => {
-    if (ref.current) { ref.current.srcObject = stream; ref.current.play?.().catch(() => {}); }
+    const v = ref.current;
+    if (!v) return;
+    v.srcObject = stream;
+    onEl?.(v);
+    v.play?.().catch(() => onBlocked?.()); // mobile blocks sound until a gesture
+    return () => onEl?.(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
   return (
     <div className="green-tile">
@@ -48,6 +55,14 @@ export default function GuestJoinPage() {
   // Guest-side background (blur / virtual background), processed on this device.
   const [bgMode, setBgMode] = useState<BgMode>("off");
   const [bgReady, setBgReady] = useState(false);
+  // Mobile browsers block autoplay WITH SOUND until a user gesture - show a
+  // "tap to enable sound" button and unmute/replay every remote tile on tap.
+  const [soundBlocked, setSoundBlocked] = useState(false);
+  const remoteEls = useRef<Set<HTMLVideoElement>>(new Set());
+  function enableSound() {
+    remoteEls.current.forEach((v) => { v.muted = false; v.play?.().catch(() => {}); });
+    setSoundBlocked(false);
+  }
 
   const localVideo = useRef<HTMLVideoElement | null>(null);
   const localStream = useRef<MediaStream | null>(null);
@@ -351,20 +366,33 @@ export default function GuestJoinPage() {
             ) : (
               // Everyone: a grid of all participants (host + guests) plus you.
               <div
+                className="green-grid"
                 style={{
                   position: "absolute", inset: 0, display: "grid", gap: 8, padding: 8,
-                  gridTemplateColumns: `repeat(${Math.min(Math.max(remotes.length + 1, 1), 3)}, 1fr)`,
+                  gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, 200px), 1fr))`,
                   alignContent: "center",
                 }}
               >
                 {remotes.map((r) => (
-                  <RemoteTile key={r.sid} stream={remoteStreams.current.get(r.sid) as MediaStream} label={r.name} />
+                  <RemoteTile
+                    key={r.sid}
+                    stream={remoteStreams.current.get(r.sid) as MediaStream}
+                    label={r.name}
+                    onEl={(el) => { if (el) remoteEls.current.add(el); }}
+                    onBlocked={() => setSoundBlocked(true)}
+                  />
                 ))}
                 {selfTile}
                 {remotes.length === 0 && (
                   <div className="green-wait" style={{ gridColumn: "1 / -1" }}>Waiting for the host and other guests...</div>
                 )}
               </div>
+            )}
+
+            {soundBlocked && (
+              <button type="button" className="green-sound-unlock" onClick={enableSound}>
+                Tap to turn on sound
+              </button>
             )}
 
             {(hasMic || hasCam) && (

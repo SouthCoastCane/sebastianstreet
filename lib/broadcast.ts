@@ -9,7 +9,11 @@ import { RealtimeSession, whipPublish } from "./realtimeClient";
 const WS_BASE = process.env.NEXT_PUBLIC_CHAT_WS_URL || "";
 const ROOM = "main";
 const SIGNAL_ROOM = `rt-${ROOM}`;
-const W = 1280, H = 720;
+// Program canvas dimensions (16:9). Mutable so the host can pick a broadcast
+// quality (480/720/1080); all compositing math is relative to W/H, so scaling
+// both keeps every layout correct - only the output resolution changes.
+let W = 1280, H = 720;
+const RES_DIMS: Record<number, [number, number]> = { 480: [854, 480], 720: [1280, 720], 1080: [1920, 1080] };
 
 type Ingest = { whipUrl: string; rtmpsUrl: string; streamKey: string } | null;
 export type Participant = { id: string; name: string; role: string; sessionId?: string; hasVideo: boolean; hasAudio: boolean };
@@ -182,6 +186,7 @@ class StudioEngine {
   private hostStream: MediaStream | null = null;
   private guestVideos = new Map<string, HTMLVideoElement>();
   private guestAudio = new Map<string, MediaStreamAudioSourceNode>();
+  private guestAudioEls = new Map<string, HTMLAudioElement>(); // keep remote audio decoding
   // Per-guest gain node (host mute control) + the set of muted guests.
   private guestGain = new Map<string, GainNode>();
   private guestLevels = new Map<string, number>(); // per-guest volume (0-1.5), 1 = normal
@@ -197,6 +202,7 @@ class StudioEngine {
   private screenVideo: HTMLVideoElement | null = null;
   private screenAudioSrc: MediaStreamAudioSourceNode | null = null;
   private camId?: string; private micId?: string;
+  resHeight = 720; // broadcast quality: 480 | 720 | 1080
 
   private pc: RTCPeerConnection | null = null;
   private rtc: RealtimeSession | null = null;
@@ -243,6 +249,10 @@ class StudioEngine {
     if (this.started) return;
     this.started = true;
     try { this.autoClearChat = localStorage.getItem("cwac-autoclear-chat") !== "0"; } catch {}
+    try {
+      const saved = Number(localStorage.getItem("ss-res"));
+      if (RES_DIMS[saved]) { this.resHeight = saved; [W, H] = RES_DIMS[saved]; }
+    } catch {}
     this.canvas = document.createElement("canvas");
     this.canvas.width = W; this.canvas.height = H;
     this.hostVideo = document.createElement("video");
@@ -258,8 +268,10 @@ class StudioEngine {
   async ensureCamera(camId?: string, micId?: string) {
     if (camId) this.camId = camId; if (micId) this.micId = micId;
     try {
+      // Ask the camera for (at least) the chosen broadcast resolution.
+      const vres = { width: { ideal: W }, height: { ideal: H } };
       const next = await navigator.mediaDevices.getUserMedia({
-        video: this.camId ? { deviceId: { exact: this.camId } } : true,
+        video: this.camId ? { deviceId: { exact: this.camId }, ...vres } : { ...vres },
         audio: this.micConstraints(),
       });
       if (this.pc && this.live) {
@@ -296,6 +308,20 @@ class StudioEngine {
       this.emit();
       return next;
     } catch { this.error = "Camera/microphone access is required."; this.emit(); return null; }
+  }
+
+  // Set the broadcast quality (program canvas resolution, 16:9). Best changed
+  // while off air; it resizes the canvas and re-requests the camera at the new
+  // resolution. The captureStream feeding WHIP follows the new canvas size.
+  async setResolution(height: 480 | 720 | 1080) {
+    const dims = RES_DIMS[height] || RES_DIMS[720];
+    if (this.resHeight === height && W === dims[0]) return;
+    this.resHeight = height;
+    [W, H] = dims;
+    if (this.canvas) { this.canvas.width = W; this.canvas.height = H; }
+    try { localStorage.setItem("ss-res", String(height)); } catch {}
+    await this.ensureCamera();
+    this.emit();
   }
 
   // Turn the host camera off (stops the device so the light goes off) or back
@@ -1660,10 +1686,20 @@ class StudioEngine {
       this.emit();
     } else if (track.kind === "audio" && this.audioCtx && this.audioDest) {
       try {
+        // A muted <audio> element kept alive keeps some browsers decoding the
+        // remote track reliably; the real audio is routed through the graph.
+        const sink = this.guestAudioEls.get(sid) || document.createElement("audio");
+        sink.muted = true; sink.autoplay = true; (sink as any).playsInline = true;
+        sink.srcObject = new MediaStream([track]);
+        sink.play().catch(() => {});
+        this.guestAudioEls.set(sid, sink);
+
         const src = this.audioCtx.createMediaStreamSource(new MediaStream([track]));
         const gain = this.audioCtx.createGain();
         gain.gain.value = this.mutedGuests.has(sid) ? 0 : (this.guestLevels.get(sid) ?? 1);
-        src.connect(gain); gain.connect(this.audioDest);
+        src.connect(gain);
+        gain.connect(this.audioDest);          // -> the broadcast + recording
+        gain.connect(this.audioCtx.destination); // -> the host's speakers (monitor)
         this.guestAudio.set(sid, src);
         this.guestGain.set(sid, gain);
         this.attachAnalyser(sid, src);
@@ -1705,6 +1741,8 @@ class StudioEngine {
     if (v) { try { (v.srcObject as MediaStream)?.getTracks().forEach((t) => t.stop()); } catch {} v.srcObject = null; this.guestVideos.delete(sessionId); }
     const a = this.guestAudio.get(sessionId);
     if (a) { try { a.disconnect(); } catch {} this.guestAudio.delete(sessionId); }
+    const ae = this.guestAudioEls.get(sessionId);
+    if (ae) { try { ae.pause(); ae.srcObject = null; } catch {} this.guestAudioEls.delete(sessionId); }
     const gn = this.guestGain.get(sessionId);
     if (gn) { try { gn.disconnect(); } catch {} this.guestGain.delete(sessionId); }
     this.mutedGuests.delete(sessionId);
