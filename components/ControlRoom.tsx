@@ -724,7 +724,6 @@ export default function ControlRoom() {
               <option value={720}>720p - recommended</option>
               <option value={1080}>1080p - best (needs more upload speed)</option>
             </select>
-            <p className="form-note" style={{ marginTop: 4 }}>The preview always fits this box, so it won&apos;t look different here - the change applies to what viewers receive. Changing it while live re-connects the stream for ~1s. Higher quality needs more upload bandwidth; if it stutters, drop to 720p or 480p.</p>
           </div>
           {cams.length > 1 && (
             <div style={{ marginTop: 10 }}>
@@ -800,7 +799,6 @@ export default function ControlRoom() {
                 <button key={k} type="button" className={`filter-btn${activeScene() === k ? " active" : ""}`} onClick={() => applyScene(k)}>{label}</button>
               ))}
             </div>
-            <p className="form-note" style={{ marginTop: 6 }}>Shortcuts: <strong>1-4</strong> scenes · <strong>M</strong> mute mic · <strong>C</strong> camera · <strong>B</strong> banner. (Ignored while typing.)</p>
             {broadcast.layout === "custom" && (
               <p className="form-note" style={{ marginTop: 6 }}><strong>Custom layout:</strong> drag any camera tile on the preview to move it; scroll over a tile to resize it.</p>
             )}
@@ -830,7 +828,6 @@ export default function ControlRoom() {
                 <span className="dest-meta" style={{ width: 46, textAlign: "right" }}>{Math.round(broadcast.hostZoom * 100)}%</span>
                 {broadcast.hostZoom !== 1 && <button className="btn btn-ghost btn-sm" type="button" onClick={() => { broadcast.setHostZoom(1); force(); }}>Reset</button>}
               </div>
-              <p className="form-note" style={{ marginTop: 6 }}>This webcam has no lens zoom, so this can only <strong>crop in</strong> (100%+) for a tighter shot - it can&apos;t widen the view. To fit more people, sit closer together, move the camera back, or use a wide-angle webcam.</p>
             </>
           )}
 
