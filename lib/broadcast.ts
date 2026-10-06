@@ -320,11 +320,25 @@ class StudioEngine {
     [W, H] = dims;
     if (this.canvas) { this.canvas.width = W; this.canvas.height = H; }
     try { localStorage.setItem("ss-res", String(height)); } catch {}
-    await this.ensureCamera();
-    // If already broadcasting, re-publish so the new resolution is actually
-    // negotiated with Cloudflare (the WHIP encoding is locked in at publish
-    // time, so just resizing the canvas won't change what viewers receive).
-    if (this.live) await this.republish();
+    // Off air: re-request the camera so it captures natively at the new size
+    // (a brief flicker is fine when not broadcasting). While live we skip this
+    // to avoid any disruption - the canvas is simply drawn at the new size.
+    if (!this.live) await this.ensureCamera();
+    // While LIVE, apply the change in place: the canvas captureStream already
+    // follows the new size, so we only bump the encoder's bitrate ceiling via
+    // setParameters. We do NOT tear down/re-open the WHIP connection - doing so
+    // drops the stream (and makes YouTube auto-end the show).
+    if (this.live && this.pc) {
+      try {
+        const vs = this.pc.getSenders().find((s) => s.track?.kind === "video");
+        if (vs) {
+          const p = vs.getParameters();
+          if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+          p.encodings[0].maxBitrate = this.bitrateForRes() * 1000;
+          await vs.setParameters(p);
+        }
+      } catch { /* best-effort; the resize still took effect */ }
+    }
     this.emit();
   }
 
@@ -333,28 +347,6 @@ class StudioEngine {
   // (which would drop the Cloudflare input and make YouTube auto-end the show).
   private bitrateForRes(): number {
     return this.resHeight >= 1080 ? 4500 : this.resHeight >= 720 ? 3000 : 1200;
-  }
-
-  // Re-establish the WHIP publish from the (now resized) canvas - used to apply
-  // a resolution change mid-broadcast. Brief (~1s) interruption is expected.
-  private async republish() {
-    const ingest = this.ingest;
-    if (!this.canvas || !this.audioDest || !ingest?.whipUrl) return;
-    try {
-      try { this.pc?.close(); } catch {}
-      this.pc = null;
-      const canvasStream = this.canvas.captureStream(30);
-      const out = new MediaStream(canvasStream.getVideoTracks());
-      this.audioDest.stream.getAudioTracks().forEach((t) => out.addTrack(t));
-      const pc = await whipPublish(ingest.whipUrl, out, this.bitrateForRes());
-      pc.onconnectionstatechange = () => {
-        if (this.pc === pc && (pc.connectionState === "failed" || pc.connectionState === "disconnected")) { this.live = false; this.emit(); }
-      };
-      this.pc = pc;
-    } catch (e: any) {
-      this.error = e?.message || "Could not re-apply the new quality - stop and start the broadcast.";
-      this.live = false;
-    }
   }
 
   // Turn the host camera off (stops the device so the light goes off) or back
