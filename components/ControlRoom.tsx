@@ -1345,22 +1345,25 @@ export default function ControlRoom() {
             ))}
           </div>
 
+          {/* Pull YouTube chat in - always visible so the host can paste the link. */}
+          <div className="form-field" style={{ marginBottom: 10 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span>Pull in YouTube chat</span>
+              {(() => { const map = { idle: { t: "Not connected", c: "var(--mute)" }, checking: { t: "Checking...", c: "var(--accent)" }, live: { t: "Live", c: "#39d98a" }, offline: { t: "Not live", c: "var(--live)" } } as const; const s = map[ytLiveStatus]; return <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: s.c, border: `1px solid ${s.c}`, borderRadius: 999, padding: "2px 8px" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: s.c }} />{s.t}</span>; })()}
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input type="text" value={ytLiveDraft} placeholder="Paste the YouTube live link..." maxLength={200} onChange={(e) => setYtLiveDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveYtLink(); } }} style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--line)", color: "var(--cream)", borderRadius: 8, padding: "8px 11px", font: "inherit", fontSize: 12.5 }} />
+              <button className="btn btn-primary btn-sm" type="button" onClick={saveYtLink} disabled={ytLiveDraft.trim() === ytLiveUrl.trim()}>Save</button>
+            </div>
+            <p className="form-note" style={{ marginTop: 5 }}>Public streams merge automatically. For <b>Unlisted</b>, paste the live link and Save. (Private can&apos;t be read.)</p>
+            {ytLinkMsg && <p className="form-ok" style={{ margin: "5px 0 0", fontSize: 12 }}>{ytLinkMsg}</p>}
+          </div>
+
           <details className="chat-settings" style={{ marginBottom: 10 }}>
-            <summary className="form-note" style={{ cursor: "pointer" }}>Chat settings</summary>
+            <summary className="form-note" style={{ cursor: "pointer" }}>More chat settings</summary>
             <div className="dest-row" style={{ marginTop: 10 }}>
               <div><div className="dest-name">Reset chat when I go live</div><div className="dest-meta">Start each broadcast clean</div></div>
               <label className="toggle"><input type="checkbox" checked={broadcast.autoClearChat} onChange={(e) => broadcast.setAutoClearChat(e.target.checked)} /><span className="track" /></label>
-            </div>
-            <div className="form-field" style={{ marginTop: 10 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span>YouTube live link (Unlisted only)</span>
-                {(() => { const map = { idle: { t: "Not connected", c: "var(--mute)" }, checking: { t: "Checking...", c: "var(--accent)" }, live: { t: "Live", c: "#39d98a" }, offline: { t: "Not live", c: "var(--live)" } } as const; const s = map[ytLiveStatus]; return <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: s.c, border: `1px solid ${s.c}`, borderRadius: 999, padding: "2px 8px" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: s.c }} />{s.t}</span>; })()}
-              </label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input type="text" value={ytLiveDraft} placeholder="https://youtube.com/watch?v=..." maxLength={200} onChange={(e) => setYtLiveDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveYtLink(); } }} style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--line)", color: "var(--cream)", borderRadius: 8, padding: "8px 11px", font: "inherit", fontSize: 12.5 }} />
-                <button className="btn btn-primary btn-sm" type="button" onClick={saveYtLink} disabled={ytLiveDraft.trim() === ytLiveUrl.trim()}>Save</button>
-              </div>
-              {ytLinkMsg && <p className="form-ok" style={{ margin: "6px 0 0", fontSize: 12 }}>{ytLinkMsg}</p>}
             </div>
           </details>
 
