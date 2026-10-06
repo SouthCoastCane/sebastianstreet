@@ -321,7 +321,38 @@ class StudioEngine {
     if (this.canvas) { this.canvas.width = W; this.canvas.height = H; }
     try { localStorage.setItem("ss-res", String(height)); } catch {}
     await this.ensureCamera();
+    // If already broadcasting, re-publish so the new resolution is actually
+    // negotiated with Cloudflare (the WHIP encoding is locked in at publish
+    // time, so just resizing the canvas won't change what viewers receive).
+    if (this.live) await this.republish();
     this.emit();
+  }
+
+  // Encoder bitrate ceiling matched to the chosen resolution.
+  private bitrateForRes(): number {
+    return this.resHeight >= 1080 ? 8000 : this.resHeight >= 720 ? 5000 : 2500;
+  }
+
+  // Re-establish the WHIP publish from the (now resized) canvas - used to apply
+  // a resolution change mid-broadcast. Brief (~1s) interruption is expected.
+  private async republish() {
+    const ingest = this.ingest;
+    if (!this.canvas || !this.audioDest || !ingest?.whipUrl) return;
+    try {
+      try { this.pc?.close(); } catch {}
+      this.pc = null;
+      const canvasStream = this.canvas.captureStream(30);
+      const out = new MediaStream(canvasStream.getVideoTracks());
+      this.audioDest.stream.getAudioTracks().forEach((t) => out.addTrack(t));
+      const pc = await whipPublish(ingest.whipUrl, out, this.bitrateForRes());
+      pc.onconnectionstatechange = () => {
+        if (this.pc === pc && (pc.connectionState === "failed" || pc.connectionState === "disconnected")) { this.live = false; this.emit(); }
+      };
+      this.pc = pc;
+    } catch (e: any) {
+      this.error = e?.message || "Could not re-apply the new quality - stop and start the broadcast.";
+      this.live = false;
+    }
   }
 
   // Turn the host camera off (stops the device so the light goes off) or back
@@ -1800,7 +1831,7 @@ class StudioEngine {
       const canvasStream = this.canvas!.captureStream(30);
       const out = new MediaStream(canvasStream.getVideoTracks());
       this.audioDest!.stream.getAudioTracks().forEach((t) => out.addTrack(t));
-      this.pc = await whipPublish(ingest.whipUrl, out);
+      this.pc = await whipPublish(ingest.whipUrl, out, this.bitrateForRes());
       this.pc.onconnectionstatechange = () => {
         if (this.pc && (this.pc.connectionState === "failed" || this.pc.connectionState === "disconnected")) { this.live = false; this.emit(); }
       };

@@ -724,7 +724,7 @@ export default function ControlRoom() {
               <option value={720}>720p - recommended</option>
               <option value={1080}>1080p - best (needs more upload speed)</option>
             </select>
-            <p className="form-note" style={{ marginTop: 4 }}>Best set before you go live. Higher quality needs more upload bandwidth; if the stream stutters, drop to 720p or 480p.</p>
+            <p className="form-note" style={{ marginTop: 4 }}>The preview always fits this box, so it won&apos;t look different here - the change applies to what viewers receive. Changing it while live re-connects the stream for ~1s. Higher quality needs more upload bandwidth; if it stutters, drop to 720p or 480p.</p>
           </div>
           {cams.length > 1 && (
             <div style={{ marginTop: 10 }}>
