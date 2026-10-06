@@ -1243,7 +1243,7 @@ export default function ControlRoom() {
                   </div>
                 </>
               )}
-              <p className="form-note" style={{ marginTop: 12 }}>The media audio goes out to your viewers (not your own speakers) to avoid mic echo - watch the Program preview to follow along. Playback starts right away; press Stop to return to the camera.</p>
+              <p className="form-note" style={{ marginTop: 12 }}>You&apos;ll hear the media so you can follow along - use headphones so your mic doesn&apos;t pick it up. Playback starts right away; press Stop to return to the camera.</p>
 
               <div style={{ marginTop: 20, borderTop: "1px solid var(--line)", paddingTop: 16 }}>
                 <h3 style={{ marginTop: 0 }}>Instant replay</h3>

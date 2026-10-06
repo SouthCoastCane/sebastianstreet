@@ -937,7 +937,8 @@ class StudioEngine {
       this.mediaGain = this.audioCtx.createGain();
       this.mediaGain.gain.value = this.mediaLevel;
       this.mediaSrc.connect(this.mediaGain);
-      this.mediaGain.connect(this.audioDest); // out to the broadcast
+      this.mediaGain.connect(this.audioDest);            // out to the broadcast
+      this.mediaGain.connect(this.audioCtx.destination); // and the host's speakers (monitor)
     } catch { this.mediaSrc = null; this.mediaGain = null; }
     this.audioCtx.resume().catch(() => {});
     el.play().catch(() => {});
