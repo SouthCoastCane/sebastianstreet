@@ -104,13 +104,14 @@ export async function getActiveLiveChatId(channelId: string): Promise<string | n
   }
 }
 
-// Pull a YouTube video ID out of any common watch/live/share URL - or accept a
+// Pull a YouTube video ID out of any common URL - watch, live, share, embed,
+// or a studio.youtube.com/video/<id>/... creator-Studio link - or accept a
 // bare 11-char ID as-is. Returns "" if nothing looks like an ID.
 export function parseVideoId(input: string): string {
   const s = (input || "").trim();
   if (!s) return "";
   if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s; // already a bare ID
-  const m = s.match(/(?:v=|\/live\/|youtu\.be\/|\/watch\?.*v=|\/embed\/)([a-zA-Z0-9_-]{11})/);
+  const m = s.match(/(?:v=|\/live\/|youtu\.be\/|\/watch\?.*v=|\/embed\/|\/video\/|studio\.youtube\.com\/video\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : "";
 }
 
