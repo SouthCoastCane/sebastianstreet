@@ -328,9 +328,11 @@ class StudioEngine {
     this.emit();
   }
 
-  // Encoder bitrate ceiling matched to the chosen resolution.
+  // Encoder bitrate ceiling matched to the chosen resolution - kept near
+  // YouTube's recommended levels so it doesn't saturate the host's upload
+  // (which would drop the Cloudflare input and make YouTube auto-end the show).
   private bitrateForRes(): number {
-    return this.resHeight >= 1080 ? 8000 : this.resHeight >= 720 ? 5000 : 2500;
+    return this.resHeight >= 1080 ? 4500 : this.resHeight >= 720 ? 3000 : 1200;
   }
 
   // Re-establish the WHIP publish from the (now resized) canvas - used to apply
