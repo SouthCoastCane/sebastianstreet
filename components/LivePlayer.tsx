@@ -38,9 +38,9 @@ export default function LivePlayer({ src, logo }: { src: string; logo?: string }
         <span className="badge"><i />Live</span>
         <iframe
           key={key}
-          src={`${src}${sep}autoplay=true&muted=true`}
+          src={`${src}${sep}autoplay=true&muted=false`}
           title="Sebastian Street Studios live"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope; clipboard-write"
           allowFullScreen
         />
       </>
