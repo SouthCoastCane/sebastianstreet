@@ -853,3 +853,36 @@ table.data tr:hover td{background:var(--bg3)}
 }
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ============================================================
+   STUDIO (Go Live): main column + persistent chat column
+   ============================================================ */
+.studio-grid{display:grid;grid-template-columns:minmax(0,1fr) 344px;gap:22px;align-items:start}
+.studio-main{min-width:0;display:flex;flex-direction:column;gap:22px}
+.studio-chat{position:sticky;top:20px;display:flex;flex-direction:column;max-height:calc(100vh - 40px)}
+.studio-chat-feed{flex:1;min-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.chat-settings summary{list-style:none;outline:none}
+.chat-settings summary::-webkit-details-marker{display:none}
+
+/* Big primary control cards (Go Live / Camera / Mic / Screen) */
+.studio-cta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.cta-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:74px;border-radius:14px;border:1px solid var(--line);background:var(--bg2);color:var(--cream);font-weight:700;font-size:15px;cursor:pointer;transition:transform .08s,border-color .15s,background .15s,filter .15s}
+.cta-card:hover{border-color:var(--mute)}
+.cta-card:active{transform:translateY(1px)}
+.cta-card:disabled{opacity:.5;cursor:not-allowed}
+.cta-card .cta-state{font-size:12px;font-weight:600;opacity:.85}
+.cta-card.is-on{border-color:color-mix(in srgb,#39d98a 55%,transparent);background:color-mix(in srgb,#39d98a 13%,var(--bg2));color:#5fe3a3}
+.cta-card.is-off{border-color:color-mix(in srgb,var(--live) 50%,transparent);background:color-mix(in srgb,var(--live) 11%,var(--bg2));color:var(--live)}
+.cta-live{background:var(--live);border-color:var(--live);color:#fff}
+.cta-live:hover{border-color:var(--live);filter:brightness(1.06)}
+.cta-stop{background:var(--bg3);border-color:var(--mute)}
+.cta-ico.cta-dot{width:9px;height:9px;border-radius:50%;background:currentColor}
+
+@media (max-width:1080px){
+  .studio-grid{grid-template-columns:1fr}
+  .studio-chat{position:static;max-height:none}
+  .studio-chat-feed{max-height:440px}
+}
+@media (max-width:560px){
+  .studio-cta{grid-template-columns:repeat(2,1fr)}
+}

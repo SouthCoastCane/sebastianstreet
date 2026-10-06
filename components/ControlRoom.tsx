@@ -92,6 +92,7 @@ export default function ControlRoom() {
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [chatDraft, setChatDraft] = useState("");
+  const [chatFilter, setChatFilter] = useState<"all" | "members" | "tips">("all");
   const [siteLogo, setSiteLogo] = useState(""); // brand logo, shown as the site badge in chat
   const [hostName, setHostNameState] = useState("Host"); // host display name (tile + chat)
   const [title, setTitle] = useState("");
@@ -695,7 +696,8 @@ export default function ControlRoom() {
         </div>
       </div>
 
-      <div className="two-col">
+      <div className="studio-grid">
+        <div className="studio-main">
         {/* ---- Program ---- */}
         <div className="panel">
           <h3>Program</h3>
@@ -734,14 +736,35 @@ export default function ControlRoom() {
               </div>
             </div>
           )}
-          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", rowGap: 10, marginTop: 16 }}>
+          {/* Primary controls - big cards (Go Live / Camera / Mic / Screen). */}
+          <div className="studio-cta">
             {!live ? (
-              <button className="btn btn-live" type="button" onClick={goLive} disabled={broadcast.connecting || ingest === null}>
-                {broadcast.connecting ? "Connecting..." : "Go Live"}
+              <button className="cta-card cta-live" type="button" onClick={goLive} disabled={broadcast.connecting || ingest === null}>
+                <span className="cta-ico cta-dot" />
+                <span className="cta-label">{broadcast.connecting ? "Connecting..." : "Go Live"}</span>
               </button>
             ) : (
-              <button className="btn btn-ghost" type="button" onClick={endBroadcast}>Stop broadcast</button>
+              <button className="cta-card cta-stop" type="button" onClick={endBroadcast}>
+                <span className="cta-ico cta-dot" />
+                <span className="cta-label">Stop broadcast</span>
+              </button>
             )}
+            <button className={`cta-card ${broadcast.cameraOn ? "is-on" : "is-off"}`} type="button" onClick={() => broadcast.setCameraOn(!broadcast.cameraOn)}>
+              <span className="cta-label">Camera</span>
+              <span className="cta-state">{broadcast.cameraOn ? "On" : "Off"}</span>
+            </button>
+            <button className={`cta-card ${broadcast.micOn ? "is-on" : "is-off"}`} type="button" onClick={() => broadcast.setMicOn(!broadcast.micOn)}>
+              <span className="cta-label">Mic</span>
+              <span className="cta-state">{broadcast.micOn ? "On" : "Off"}</span>
+            </button>
+            <button className={`cta-card ${broadcast.screenSharing ? "is-on" : ""}`} type="button" onClick={() => broadcast.screenSharing ? broadcast.stopScreenShare() : broadcast.startScreenShare()}>
+              <span className="cta-label">Screen</span>
+              <span className="cta-state">{broadcast.screenSharing ? "Sharing" : "Share"}</span>
+            </button>
+          </div>
+
+          {/* Secondary controls - layout, recording, live page. */}
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", rowGap: 10, marginTop: 12 }}>
             {broadcast.screenSharing ? (
               <div className="filters" style={{ margin: 0 }}>
                 <button className={`filter-btn${broadcast.screenLayout === "full" ? " active" : ""}`} type="button" onClick={() => broadcast.setScreenLayout("full")}>Full</button>
@@ -754,13 +777,6 @@ export default function ControlRoom() {
                 <button className={`filter-btn${broadcast.layout === "spotlight" ? " active" : ""}`} type="button" onClick={() => { broadcast.beginTransition(); broadcast.setLayout("spotlight"); force(); }}>Spotlight</button>
                 <button className={`filter-btn${broadcast.layout === "custom" ? " active" : ""}`} type="button" onClick={() => { broadcast.beginTransition(); broadcast.setLayout("custom"); force(); }}>Custom</button>
               </div>
-            )}
-            <button className={`btn btn-sm ${broadcast.cameraOn ? "btn-ghost" : "btn-danger"}`} type="button" onClick={() => broadcast.setCameraOn(!broadcast.cameraOn)}>{broadcast.cameraOn ? "Camera on" : "Camera off"}</button>
-            <button className={`btn btn-sm ${broadcast.micOn ? "btn-ghost" : "btn-danger"}`} type="button" onClick={() => broadcast.setMicOn(!broadcast.micOn)}>{broadcast.micOn ? "Mic on" : "Mic off"}</button>
-            {broadcast.screenSharing ? (
-              <button className="btn btn-ghost btn-sm" type="button" onClick={() => broadcast.stopScreenShare()}>Stop sharing</button>
-            ) : (
-              <button className="btn btn-ghost btn-sm" type="button" onClick={() => broadcast.startScreenShare()}>Share screen</button>
             )}
             {broadcast.recording ? (
               <button className="btn btn-ghost btn-sm" type="button" onClick={() => broadcast.stopRecording()}><span className="rec-dot" />Stop recording</button>
@@ -855,7 +871,7 @@ export default function ControlRoom() {
         {/* ---- Show controls ---- */}
         <div>
           <div className="filters" style={{ marginBottom: 16 }}>
-            {([["onair", "On air"], ["chat", "Chat"], ["guests", "Guests"], ["audio", "Audio"], ["scene", "Scene"], ["rundown", "Rundown"], ["intro", "Intro"], ["sounds", "Sounds"], ["media", "Media"], ["sources", "Sources"]] as [Tab, string][]).map(([k, label]) => (
+            {([["onair", "On air"], ["guests", "Guests"], ["audio", "Audio"], ["scene", "Scene"], ["rundown", "Rundown"], ["intro", "Intro"], ["sounds", "Sounds"], ["media", "Media"], ["sources", "Sources"]] as [Tab, string][]).map(([k, label]) => (
               <button key={k} className={`filter-btn${tab === k ? " active" : ""}`} type="button" onClick={() => setTab(k)}>{label}</button>
             ))}
           </div>
@@ -902,101 +918,6 @@ export default function ControlRoom() {
             </div>
           )}
 
-          {tab === "chat" && (
-            <div className="panel">
-              <div className="mod-row" style={{ alignItems: "center", marginBottom: 4 }}>
-                <h3 style={{ margin: 0 }}>Live chat</h3>
-                <button className="btn btn-ghost btn-sm" type="button" onClick={() => { if (confirm("Clear the live chat for everyone?")) { broadcast.clearChat(); setModMsg("Chat cleared."); } }}>Clear chat</button>
-              </div>
-              <div className="panel-sub">Site + YouTube, merged. Timeout or remove a signed-in viewer from here.</div>
-              <div className="dest-row" style={{ marginTop: 6 }}>
-                <div><div className="dest-name">Reset chat when I go live</div><div className="dest-meta">Start each broadcast with a clean chat</div></div>
-                <label className="toggle"><input type="checkbox" checked={broadcast.autoClearChat} onChange={(e) => broadcast.setAutoClearChat(e.target.checked)} /><span className="track" /></label>
-              </div>
-
-              {/* YouTube chat pull-in: Public auto-detects; Unlisted needs the link; Private can't be read. */}
-              <div className="form-field" style={{ marginTop: 12 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span>YouTube live link (only needed for Unlisted streams)</span>
-                  {(() => {
-                    const map = {
-                      idle: { t: "Not connected", c: "var(--mute)", d: "var(--mute)" },
-                      checking: { t: "Checking...", c: "var(--accent)", d: "var(--accent)" },
-                      live: { t: "Live - chat connected", c: "#39d98a", d: "#39d98a" },
-                      offline: { t: "Not live", c: "var(--live)", d: "var(--live)" },
-                    } as const;
-                    const s = map[ytLiveStatus];
-                    return (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 600, color: s.c, border: `1px solid ${s.c}`, borderRadius: 999, padding: "2px 9px" }}>
-                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.d }} />{s.t}
-                      </span>
-                    );
-                  })()}
-                </label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input
-                    type="text"
-                    value={ytLiveDraft}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    maxLength={200}
-                    onChange={(e) => setYtLiveDraft(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveYtLink(); } }}
-                    style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--line)", color: "var(--cream)", borderRadius: 8, padding: "9px 12px", font: "inherit", fontSize: 13 }}
-                  />
-                  <button className="btn btn-primary btn-sm" type="button" onClick={saveYtLink} disabled={ytLiveDraft.trim() === ytLiveUrl.trim()}>Save</button>
-                </div>
-                {ytLinkMsg && <p className="form-ok" style={{ margin: "6px 0 0", fontSize: 12.5 }}>{ytLinkMsg}</p>}
-                <p className="form-note" style={{ marginTop: 6 }}>
-                  <b>Public</b> streams pull chat in automatically (a couple of minutes after going live). <b>Unlisted</b> streams aren&apos;t searchable - paste the live video link here and click <b>Save</b> to pull their chat instantly. <b>Private</b> streams can&apos;t be read by YouTube&apos;s API, so set the broadcast to Public or Unlisted to merge its chat.
-                </p>
-              </div>
-              {modMsg && <p className="form-ok" style={{ fontSize: "12.5px", marginBottom: 10 }}>{modMsg}</p>}
-              <div style={{ maxHeight: 460, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-                {chat.length === 0 && <p className="muted" style={{ fontSize: "13px" }}>No messages yet.</p>}
-                {chat.map((m) => (
-                  <div className="mod-row" key={m.id}>
-                    <div className={`msg${m.tip ? " tipmsg" : ""}`} style={{ minWidth: 0 }}>
-                      {m.tip ? <><span className="tipamt">${m.tip.toFixed(2)}</span><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}</> : <>{srcBadge(m.source, siteLogo)}<b>{m.name}</b> {linkify(m.text)}</>}
-                    </div>
-                    {m.uid && (
-                      <div className="mod-actions">
-                        <button className="btn btn-ghost btn-xs" type="button" title="Timeout for a set time" onClick={() => setTimeoutFor(m)}>Timeout</button>
-                        <button className="btn btn-ghost btn-xs" type="button" title="Remove from chat" onClick={() => moderate("ban", m)}>Ban</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Host posts into the chat (links become clickable for viewers). */}
-              <form onSubmit={(e) => { e.preventDefault(); sendChat(); }} style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <input type="text" value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} placeholder="Message chat as host - paste links here" maxLength={500} style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--line)", color: "var(--cream)", borderRadius: 8, padding: "9px 12px", font: "inherit", fontSize: 13 }} />
-                <button className="btn btn-primary btn-sm" type="submit" disabled={!chatDraft.trim()}>Send</button>
-              </form>
-
-              {timeoutFor && (
-                <div className="modal-backdrop" onClick={() => setTimeoutFor(null)}>
-                  <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-                    <h3 style={{ marginTop: 0 }}>Timeout {timeoutFor.name}</h3>
-                    <div className="panel-sub">They can still watch, but can&apos;t chat until the timeout ends.</div>
-                    <div className="filters" style={{ marginTop: 14, marginBottom: 0 }}>
-                      {([["1 min", 60], ["5 min", 300], ["15 min", 900], ["1 hour", 3600], ["24 hours", 86400]] as [string, number][]).map(([label, secs]) => (
-                        <button key={secs} type="button" className="filter-btn" onClick={() => { moderate("timeout", timeoutFor, secs); setTimeoutFor(null); }}>{label}</button>
-                      ))}
-                    </div>
-                    <div className="form-field" style={{ marginTop: 14 }}>
-                      <label>Custom (minutes)</label>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <input type="number" min={1} max={1440} value={customMin} onChange={(e) => setCustomMin(e.target.value)} />
-                        <button className="btn btn-primary btn-sm" type="button" onClick={() => { const s = Math.max(1, Math.min(1440, Number(customMin) || 10)) * 60; moderate("timeout", timeoutFor, s); setTimeoutFor(null); }}>Apply</button>
-                      </div>
-                    </div>
-                    <button className="btn btn-ghost btn-sm" style={{ marginTop: 14 }} type="button" onClick={() => setTimeoutFor(null)}>Cancel</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {tab === "guests" && (
             <div className="panel">
@@ -1407,6 +1328,86 @@ export default function ControlRoom() {
               </div>
               <SimulcastManager />
             </>
+          )}
+        </div>
+        </div>{/* /studio-main */}
+
+        {/* ---- Persistent live chat (right column) ---- */}
+        <div className="panel studio-chat">
+          <div className="mod-row" style={{ alignItems: "center", marginBottom: 4 }}>
+            <h3 style={{ margin: 0 }}>Live chat</h3>
+            <button className="btn btn-ghost btn-sm" type="button" onClick={() => { if (confirm("Clear the live chat for everyone?")) { broadcast.clearChat(); setModMsg("Chat cleared."); } }}>Clear</button>
+          </div>
+          <div className="panel-sub" style={{ marginBottom: 10 }}>Site + YouTube, merged.</div>
+          <div className="filters" style={{ margin: "0 0 10px" }}>
+            {([["all", "All"], ["members", "Members"], ["tips", "Tips"]] as ["all" | "members" | "tips", string][]).map(([k, label]) => (
+              <button key={k} type="button" className={`filter-btn${chatFilter === k ? " active" : ""}`} onClick={() => setChatFilter(k)}>{label}</button>
+            ))}
+          </div>
+
+          <details className="chat-settings" style={{ marginBottom: 10 }}>
+            <summary className="form-note" style={{ cursor: "pointer" }}>Chat settings</summary>
+            <div className="dest-row" style={{ marginTop: 10 }}>
+              <div><div className="dest-name">Reset chat when I go live</div><div className="dest-meta">Start each broadcast clean</div></div>
+              <label className="toggle"><input type="checkbox" checked={broadcast.autoClearChat} onChange={(e) => broadcast.setAutoClearChat(e.target.checked)} /><span className="track" /></label>
+            </div>
+            <div className="form-field" style={{ marginTop: 10 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span>YouTube live link (Unlisted only)</span>
+                {(() => { const map = { idle: { t: "Not connected", c: "var(--mute)" }, checking: { t: "Checking...", c: "var(--accent)" }, live: { t: "Live", c: "#39d98a" }, offline: { t: "Not live", c: "var(--live)" } } as const; const s = map[ytLiveStatus]; return <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: s.c, border: `1px solid ${s.c}`, borderRadius: 999, padding: "2px 8px" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: s.c }} />{s.t}</span>; })()}
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input type="text" value={ytLiveDraft} placeholder="https://youtube.com/watch?v=..." maxLength={200} onChange={(e) => setYtLiveDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveYtLink(); } }} style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--line)", color: "var(--cream)", borderRadius: 8, padding: "8px 11px", font: "inherit", fontSize: 12.5 }} />
+                <button className="btn btn-primary btn-sm" type="button" onClick={saveYtLink} disabled={ytLiveDraft.trim() === ytLiveUrl.trim()}>Save</button>
+              </div>
+              {ytLinkMsg && <p className="form-ok" style={{ margin: "6px 0 0", fontSize: 12 }}>{ytLinkMsg}</p>}
+            </div>
+          </details>
+
+          {modMsg && <p className="form-ok" style={{ fontSize: "12.5px", margin: "8px 0" }}>{modMsg}</p>}
+
+          <div className="studio-chat-feed">
+            {chat.filter((m) => chatFilter === "all" ? true : chatFilter === "tips" ? !!m.tip : !!m.uid).length === 0 && <p className="muted" style={{ fontSize: "13px" }}>No messages yet.</p>}
+            {chat.filter((m) => chatFilter === "all" ? true : chatFilter === "tips" ? !!m.tip : !!m.uid).map((m) => (
+              <div className="mod-row" key={m.id}>
+                <div className={`msg${m.tip ? " tipmsg" : ""}`} style={{ minWidth: 0 }}>
+                  {m.tip ? <><span className="tipamt">${m.tip.toFixed(2)}</span><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}</> : <>{srcBadge(m.source, siteLogo)}<b>{m.name}</b> {linkify(m.text)}</>}
+                </div>
+                {m.uid && (
+                  <div className="mod-actions">
+                    <button className="btn btn-ghost btn-xs" type="button" title="Timeout" onClick={() => setTimeoutFor(m)}>Timeout</button>
+                    <button className="btn btn-ghost btn-xs" type="button" title="Remove" onClick={() => moderate("ban", m)}>Ban</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); sendChat(); }} style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <input type="text" value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} placeholder="Message chat as host - paste links here" maxLength={500} style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--line)", color: "var(--cream)", borderRadius: 8, padding: "9px 12px", font: "inherit", fontSize: 13 }} />
+            <button className="btn btn-primary btn-sm" type="submit" disabled={!chatDraft.trim()}>Send</button>
+          </form>
+
+          {timeoutFor && (
+            <div className="modal-backdrop" onClick={() => setTimeoutFor(null)}>
+              <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+                <h3 style={{ marginTop: 0 }}>Timeout {timeoutFor.name}</h3>
+                <div className="panel-sub">They can still watch, but can&apos;t chat until the timeout ends.</div>
+                <div className="filters" style={{ marginTop: 14, marginBottom: 0 }}>
+                  {([["1 min", 60], ["5 min", 300], ["15 min", 900], ["1 hour", 3600], ["24 hours", 86400]] as [string, number][]).map(([label, secs]) => (
+                    <button key={secs} type="button" className="filter-btn" onClick={() => { moderate("timeout", timeoutFor, secs); setTimeoutFor(null); }}>{label}</button>
+                  ))}
+                </div>
+                <div className="form-field" style={{ marginTop: 14 }}>
+                  <label>Custom (minutes)</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input type="number" min={1} max={1440} value={customMin} onChange={(e) => setCustomMin(e.target.value)} />
+                    <button className="btn btn-primary btn-sm" type="button" onClick={() => { const s = Math.max(1, Math.min(1440, Number(customMin) || 10)) * 60; moderate("timeout", timeoutFor, s); setTimeoutFor(null); }}>Apply</button>
+                  </div>
+                </div>
+                <button className="btn btn-ghost btn-sm" style={{ marginTop: 14 }} type="button" onClick={() => setTimeoutFor(null)}>Cancel</button>
+              </div>
+            </div>
           )}
         </div>
       </div>
