@@ -14,20 +14,20 @@ type View = "everyone" | "me";
 // A remote participant's live video/audio tile. Keeps its own <video> in sync
 // with the (live) MediaStream it's given. Reports its element up (so a user tap
 // can unlock audio on mobile) and flags when autoplay-with-sound is blocked.
-function RemoteTile({ stream, label, onEl, onBlocked }: { stream: MediaStream; label: string; onEl?: (el: HTMLVideoElement | null) => void; onBlocked?: () => void }) {
+function RemoteTile({ stream, label, muted, onEl }: { stream: MediaStream; label: string; muted: boolean; onEl?: (el: HTMLVideoElement | null) => void }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
     v.srcObject = stream;
     onEl?.(v);
-    v.play?.().catch(() => onBlocked?.()); // mobile blocks sound until a gesture
+    v.play?.().catch(() => {}); // starts muted, so this reliably plays on mobile
     return () => onEl?.(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
   return (
     <div className="green-tile">
-      <video ref={ref} autoPlay playsInline />
+      <video ref={ref} autoPlay playsInline muted={muted} />
       <span className="green-self-tag">{label}</span>
     </div>
   );
@@ -55,13 +55,14 @@ export default function GuestJoinPage() {
   // Guest-side background (blur / virtual background), processed on this device.
   const [bgMode, setBgMode] = useState<BgMode>("off");
   const [bgReady, setBgReady] = useState(false);
-  // Mobile browsers block autoplay WITH SOUND until a user gesture - show a
-  // "tap to enable sound" button and unmute/replay every remote tile on tap.
-  const [soundBlocked, setSoundBlocked] = useState(false);
+  // Mobile browsers autoplay remote video MUTED; sound needs a user gesture.
+  // Remote tiles start muted (so video always plays); a prominent button
+  // unmutes + replays every remote tile on tap.
+  const [soundOn, setSoundOn] = useState(false);
   const remoteEls = useRef<Set<HTMLVideoElement>>(new Set());
   function enableSound() {
+    setSoundOn(true);
     remoteEls.current.forEach((v) => { v.muted = false; v.play?.().catch(() => {}); });
-    setSoundBlocked(false);
   }
 
   const localVideo = useRef<HTMLVideoElement | null>(null);
@@ -378,8 +379,8 @@ export default function GuestJoinPage() {
                     key={r.sid}
                     stream={remoteStreams.current.get(r.sid) as MediaStream}
                     label={r.name}
+                    muted={!soundOn}
                     onEl={(el) => { if (el) remoteEls.current.add(el); }}
-                    onBlocked={() => setSoundBlocked(true)}
                   />
                 ))}
                 {selfTile}
@@ -389,7 +390,7 @@ export default function GuestJoinPage() {
               </div>
             )}
 
-            {soundBlocked && (
+            {!soundOn && remotes.length > 0 && (
               <button type="button" className="green-sound-unlock" onClick={enableSound}>
                 Tap to turn on sound
               </button>
