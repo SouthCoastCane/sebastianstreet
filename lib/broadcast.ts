@@ -732,7 +732,9 @@ class StudioEngine {
   // is the active speaker) an amber rounded border around the tile.
   private drawTileLabel(ctx: CanvasRenderingContext2D, name: string, key: string, x: number, y: number, w: number, h: number, r = TILE_R) {
     // Active-speaker ring (drawn on the tile edge, inside the clip bounds).
-    if (key && this.activeKey === key) {
+    // Only when there are guests on air - with a solo host it would flash a
+    // border around the whole frame every time he speaks, which is distracting.
+    if (key && this.activeKey === key && this.admitted.size > 0) {
       ctx.save();
       const inset = 1.5;
       roundRectPath(ctx, x + inset, y + inset, w - inset * 2, h - inset * 2, Math.max(0, r - inset));
