@@ -1371,7 +1371,9 @@ export default function ControlRoom() {
             {chat.filter((m) => chatFilter === "all" ? true : chatFilter === "tips" ? !!m.tip : !!m.uid).map((m) => (
               <div className="mod-row" key={m.id}>
                 <div className={`msg${m.tip ? " tipmsg" : ""}`} style={{ minWidth: 0 }}>
-                  {m.tip ? <><span className="tipamt">${m.tip.toFixed(2)}</span><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}</> : <>{srcBadge(m.source, siteLogo)}<b>{m.name}</b> {linkify(m.text)}</>}
+                  {m.tip
+                    ? <><span className="tipamt">${m.tip.toFixed(2)}</span><span className="msg-body"><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}</span></>
+                    : <>{srcBadge(m.source, siteLogo)}<span className="msg-body"><b>{m.name}</b> {linkify(m.text)}</span></>}
                 </div>
                 {m.uid && (
                   <div className="mod-actions">

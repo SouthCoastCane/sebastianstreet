@@ -312,11 +312,13 @@ export default function LiveChat({ asGuest }: { asGuest?: string } = {}) {
         {messages.map((m) =>
           m.tip ? (
             <div className="msg tipmsg" key={m.id}>
-              <span className="tipamt">${m.tip.toFixed(2)}</span><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}
+              <span className="tipamt">${m.tip.toFixed(2)}</span>
+              <span className="msg-body"><b>{m.name}</b>{m.text ? <span> {m.text}</span> : null}</span>
             </div>
           ) : (
             <div className={`msg${m.name === hostName ? " is-host" : ""}`} key={m.id}>
-              <SourceBadge source={m.source} logo={siteLogo} /><b>{m.name}</b>{linkify(m.text)}
+              <SourceBadge source={m.source} logo={siteLogo} />
+              <span className="msg-body"><b>{m.name}</b>{linkify(m.text)}</span>
             </div>
           )
         )}
